@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { createBrowserClient } from "@supabase/ssr";
 
 const ACCENT = "#75ea5e";
+const WARN = "#f59e0b";
 
 function getSupabase() {
   return createBrowserClient(
@@ -31,11 +32,19 @@ type Org = {
   plan: string;
 };
 
+const inputStyle: React.CSSProperties = {
+  width: "100%", boxSizing: "border-box", padding: "10px 12px", borderRadius: 8,
+  border: "1px solid #33333a", background: "#0e0e0f", color: "#f4f4f5",
+  fontSize: 14, fontFamily: "inherit", marginBottom: 12,
+};
+
 export default function OverviewPage() {
   const [org, setOrg] = useState<Org | null>(null);
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
+  const [publicKey, setPublicKey] = useState<string | null>(null);
+  const [polling, setPolling] = useState(false);
 
   // Create org + project flow
   const [step, setStep] = useState<"idle" | "creating-org" | "creating-project">("idle");
@@ -44,38 +53,64 @@ export default function OverviewPage() {
   const [projectSlug, setProjectSlug] = useState("");
   const [error, setError] = useState("");
 
-  useEffect(() => {
-    async function load() {
-      const supabase = getSupabase();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+  const loadData = useCallback(async () => {
+    const supabase = getSupabase();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
 
-      // Get orgs the user belongs to
-      const { data: members } = await supabase
-        .from("org_members")
-        .select("org_id, orgs(id, name, plan)")
-        .eq("user_id", user.id)
-        .limit(1)
-        .single();
+    const { data: member } = await supabase
+      .from("org_members")
+      .select("org_id, orgs(id, name, plan)")
+      .eq("user_id", user.id)
+      .limit(1)
+      .single();
 
-      if (!members) { setLoading(false); return; }
+    if (!member) { setLoading(false); return; }
+    const orgData = (member.orgs as unknown) as Org;
+    setOrg(orgData);
 
-      const orgData = (members.orgs as unknown) as Org;
-      setOrg(orgData);
+    const { data: proj } = await supabase
+      .from("projects")
+      .select("*")
+      .eq("org_id", orgData.id)
+      .order("created_at", { ascending: true })
+      .limit(1)
+      .single();
 
-      // Get first project in that org
-      const { data: proj } = await supabase
-        .from("projects")
-        .select("*")
-        .eq("org_id", orgData.id)
-        .limit(1)
-        .single();
-
-      if (proj) setProject(proj as Project);
-      setLoading(false);
-    }
-    load();
+    if (proj) setProject(proj as Project);
+    setLoading(false);
   }, []);
+
+  useEffect(() => { loadData(); }, [loadData]);
+
+  // Fetch public key when project is active
+  useEffect(() => {
+    if (!project || project.status !== "active") return;
+    fetch(`/api/projects/${project.id}/keys`)
+      .then(r => r.json())
+      .then(d => { if (d.publicKey) setPublicKey(d.publicKey); })
+      .catch(() => {});
+  }, [project]);
+
+  // Poll status if still provisioning
+  useEffect(() => {
+    if (!project || project.status === "active" || project.status === "failed") return;
+    setPolling(true);
+    const interval = setInterval(async () => {
+      const supabase = getSupabase();
+      const { data } = await supabase
+        .from("projects")
+        .select("status, supabase_ref")
+        .eq("id", project.id)
+        .single();
+      if (data?.status === "active" || data?.status === "failed") {
+        setProject(p => p ? { ...p, status: data.status, supabase_ref: data.supabase_ref } : p);
+        setPolling(false);
+        clearInterval(interval);
+      }
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [project]);
 
   async function createOrg(e: React.FormEvent) {
     e.preventDefault();
@@ -102,7 +137,6 @@ export default function OverviewPage() {
       });
       const data = await r.json();
       if (!r.ok) { setError(data.error ?? "Failed"); setStep("idle"); return; }
-      // Reload project
       const supabase = getSupabase();
       const { data: proj } = await supabase.from("projects").select("*").eq("id", data.id).single();
       setProject(proj as Project);
@@ -115,21 +149,16 @@ export default function OverviewPage() {
   function copyEnv() {
     if (!project) return;
     const url = `https://${project.slug}.masidy.com`;
-    navigator.clipboard.writeText(`MASIDY_URL=${url}\nMASIDY_KEY=your-public-key`);
+    const key = publicKey ?? "pending-until-active";
+    navigator.clipboard.writeText(`MASIDY_URL=${url}\nMASIDY_KEY=${key}`);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   }
 
-  const inputStyle: React.CSSProperties = {
-    width: "100%", boxSizing: "border-box", padding: "10px 12px", borderRadius: 8,
-    border: "1px solid #33333a", background: "#0e0e0f", color: "#f4f4f5",
-    fontSize: 14, fontFamily: "inherit", marginBottom: 12,
-  };
-
   if (loading) {
     return (
       <main style={{ padding: "32px 40px" }}>
-        <div style={{ color: "#a1a1aa" }}>Loading…</div>
+        <div style={{ color: "#a1a1aa", fontSize: 14 }}>Loading…</div>
       </main>
     );
   }
@@ -142,11 +171,7 @@ export default function OverviewPage() {
         <p style={{ margin: "0 0 28px", color: "#a1a1aa", fontSize: 15 }}>Create an organization to get started.</p>
         <form onSubmit={createOrg} style={{ border: "1px solid #26262a", borderRadius: 12, background: "#151517", padding: 24 }}>
           <label style={{ display: "block", fontSize: 13, color: "#a1a1aa", marginBottom: 6 }}>Organization name</label>
-          <input
-            type="text" required placeholder="Acme Inc."
-            value={orgName} onChange={e => setOrgName(e.target.value)}
-            style={inputStyle}
-          />
+          <input type="text" required placeholder="Acme Inc." value={orgName} onChange={e => setOrgName(e.target.value)} style={inputStyle} />
           {error && <p style={{ color: "#f87171", fontSize: 14, margin: "0 0 12px" }}>{error}</p>}
           <button type="submit" disabled={step === "creating-org"} style={{ padding: "10px 20px", borderRadius: 8, border: 0, background: "#f4f4f5", color: "#0b0b0c", fontWeight: 600, fontSize: 14, cursor: "pointer", fontFamily: "inherit" }}>
             {step === "creating-org" ? "Creating…" : "Create organization"}
@@ -156,7 +181,7 @@ export default function OverviewPage() {
     );
   }
 
-  // ── Org exists but no project yet ───────────────────────────
+  // ── No project yet ───────────────────────────────────────────
   if (!project) {
     return (
       <main style={{ padding: "32px 40px", maxWidth: 520 }}>
@@ -164,13 +189,9 @@ export default function OverviewPage() {
         <p style={{ margin: "0 0 28px", color: "#a1a1aa", fontSize: 15 }}>A project is an isolated database + API for your app.</p>
         <form onSubmit={createProject} style={{ border: "1px solid #26262a", borderRadius: 12, background: "#151517", padding: 24 }}>
           <label style={{ display: "block", fontSize: 13, color: "#a1a1aa", marginBottom: 6 }}>Project name</label>
-          <input
-            type="text" required placeholder="My App"
-            value={projectName} onChange={e => setProjectName(e.target.value)}
-            style={inputStyle}
-          />
+          <input type="text" required placeholder="My App" value={projectName} onChange={e => setProjectName(e.target.value)} style={inputStyle} />
           <label style={{ display: "block", fontSize: 13, color: "#a1a1aa", marginBottom: 6 }}>
-            Slug <span style={{ color: "#71717a" }}>— becomes myapp.masidy.com</span>
+            Slug <span style={{ color: "#71717a" }}>→ becomes slug.masidy.com</span>
           </label>
           <input
             type="text" required placeholder="my-app"
@@ -180,26 +201,50 @@ export default function OverviewPage() {
           />
           {error && <p style={{ color: "#f87171", fontSize: 14, margin: "0 0 12px" }}>{error}</p>}
           <button type="submit" disabled={step === "creating-project"} style={{ padding: "10px 20px", borderRadius: 8, border: 0, background: "#f4f4f5", color: "#0b0b0c", fontWeight: 600, fontSize: 14, cursor: "pointer", fontFamily: "inherit" }}>
-            {step === "creating-project" ? "Provisioning…" : "Create project"}
+            {step === "creating-project" ? "Provisioning — this takes ~30s…" : "Create project"}
           </button>
-          <p style={{ margin: "12px 0 0", fontSize: 13, color: "#71717a" }}>This provisions a real Supabase database — takes ~30 seconds.</p>
         </form>
       </main>
     );
   }
 
-  // ── Project exists — show dashboard ─────────────────────────
+  // ── Full dashboard ───────────────────────────────────────────
+  const isActive = project.status === "active";
+  const isFailed = project.status === "failed";
   const projectUrl = `https://${project.slug}.masidy.com`;
+  const statusColor = isActive ? ACCENT : isFailed ? "#f87171" : WARN;
 
   return (
     <main style={{ padding: "32px 40px", display: "flex", flexDirection: "column", gap: 20 }}>
-      <div style={{ display: "flex", alignItems: "baseline", gap: 16, flexWrap: "wrap" }}>
+
+      {/* Header */}
+      <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
         <h1 style={{ margin: 0, fontSize: 36, letterSpacing: "-.02em", fontFamily: "'Newsreader',Georgia,serif", fontWeight: 500 }}>Overview</h1>
-        <span style={{ fontSize: 13, color: "#a1a1aa" }}>
-          <span style={{ color: project.status === "active" ? ACCENT : "#f59e0b" }}>●</span>
-          {" "}{project.status} · {project.region} · {org.plan} plan
+        <span style={{ fontSize: 13, color: "#a1a1aa", display: "flex", alignItems: "center", gap: 6 }}>
+          <span style={{ color: statusColor }}>●</span>
+          {project.status}{polling ? " — checking…" : ""} · {project.region} · {org.plan} plan
         </span>
+        {!isActive && !isFailed && (
+          <button
+            onClick={loadData}
+            style={{ padding: "5px 12px", borderRadius: 8, border: "1px solid #33333a", background: "transparent", color: "#a1a1aa", fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}
+          >
+            ↻ Refresh status
+          </button>
+        )}
       </div>
+
+      {/* Provisioning banner */}
+      {!isActive && !isFailed && (
+        <div style={{ padding: "14px 18px", borderRadius: 10, border: `1px solid ${WARN}22`, background: `${WARN}11`, fontSize: 14, color: WARN }}>
+          Your project is being provisioned. This usually takes 1–2 minutes. The page will update automatically.
+        </div>
+      )}
+      {isFailed && (
+        <div style={{ padding: "14px 18px", borderRadius: 10, border: "1px solid #f8717133", background: "#f8717111", fontSize: 14, color: "#f87171" }}>
+          Provisioning failed. Please contact support or try creating a new project.
+        </div>
+      )}
 
       {/* Connect your app */}
       <section style={{ border: "1px solid #26262a", borderRadius: 12, background: "#151517", padding: 20 }}>
@@ -212,13 +257,21 @@ export default function OverviewPage() {
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(300px,1fr))", gap: 12 }}>
           <div>
             <div style={{ fontFamily: "'Geist Mono',monospace", fontSize: 11, color: "#a1a1aa", marginBottom: 6 }}>MASIDY_URL</div>
-            <div style={{ fontFamily: "'Geist Mono',monospace", fontSize: 13, padding: "10px 12px", borderRadius: 8, background: "#0e0e0f", border: "1px solid #26262a" }}>{projectUrl}</div>
+            <div style={{ fontFamily: "'Geist Mono',monospace", fontSize: 13, padding: "10px 12px", borderRadius: 8, background: "#0e0e0f", border: "1px solid #26262a" }}>
+              {projectUrl}
+            </div>
           </div>
           <div>
             <div style={{ fontFamily: "'Geist Mono',monospace", fontSize: 11, color: "#a1a1aa", marginBottom: 6 }}>MASIDY_KEY (public)</div>
-            <Link href="/api-keys" style={{ display: "block", fontFamily: "'Geist Mono',monospace", fontSize: 13, padding: "10px 12px", borderRadius: 8, background: "#0e0e0f", border: "1px solid #26262a", color: ACCENT, textDecoration: "none" }}>
-              View in API keys →
-            </Link>
+            {publicKey ? (
+              <div style={{ fontFamily: "'Geist Mono',monospace", fontSize: 12, padding: "10px 12px", borderRadius: 8, background: "#0e0e0f", border: "1px solid #26262a", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {publicKey}
+              </div>
+            ) : (
+              <Link href="/dashboard/api-keys" style={{ display: "block", fontFamily: "'Geist Mono',monospace", fontSize: 13, padding: "10px 12px", borderRadius: 8, background: "#0e0e0f", border: "1px solid #26262a", color: isActive ? ACCENT : "#71717a", textDecoration: "none" }}>
+                {isActive ? "View in API keys →" : "Available once active"}
+              </Link>
+            )}
           </div>
         </div>
       </section>
@@ -245,24 +298,24 @@ export default function OverviewPage() {
         <section style={{ border: "1px solid #26262a", borderRadius: 12, background: "#151517", padding: 20 }}>
           <h2 style={{ margin: "0 0 8px", fontSize: 17 }}>Services</h2>
           {[
-            { name: "Database", status: "Ready" },
-            { name: "Auth", status: "Ready" },
-            { name: "Storage", status: "Ready" },
-            { name: "Domains", status: "No domain connected" },
-            { name: "Email", status: "Not configured" },
-          ].map(({ name, status }) => (
-            <div key={name} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 0", borderTop: "1px solid #26262a", fontSize: 14 }}>
-              <span style={{ color: ACCENT }}>●</span>
+            { name: "Database", href: "/dashboard/table-editor", status: isActive ? "Ready" : "Provisioning" },
+            { name: "Auth", href: "/dashboard/auth", status: isActive ? "Ready" : "Provisioning" },
+            { name: "Storage", href: "/dashboard/storage", status: isActive ? "Ready" : "Provisioning" },
+            { name: "Domains", href: "/dashboard/domains", status: "No domain connected" },
+            { name: "Email", href: "/dashboard/email", status: "Not configured" },
+          ].map(({ name, href, status }) => (
+            <Link key={name} href={href} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 0", borderTop: "1px solid #26262a", fontSize: 14, textDecoration: "none", color: "inherit" }}>
+              <span style={{ color: isActive ? ACCENT : WARN }}>●</span>
               <span style={{ flex: 1 }}>{name}</span>
               <span style={{ color: "#a1a1aa" }}>{status}</span>
-            </div>
+            </Link>
           ))}
         </section>
 
         <section style={{ border: "1px solid #26262a", borderRadius: 12, background: "#151517", padding: 20 }}>
           <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
             <h2 style={{ margin: 0, fontSize: 17 }}>Recent requests</h2>
-            <Link href="/logs" style={{ fontSize: 14, color: ACCENT, textDecoration: "none" }}>Open logs →</Link>
+            <Link href="/dashboard/logs" style={{ fontSize: 14, color: ACCENT, textDecoration: "none" }}>Open logs →</Link>
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "70px 1fr 60px", gap: 8, padding: "10px 0", borderTop: "1px solid #26262a", fontFamily: "'Geist Mono',monospace", fontSize: 11, color: "#71717a" }}>
             <span>METHOD</span><span>PATH</span><span>STATUS</span>

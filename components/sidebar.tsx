@@ -176,6 +176,10 @@ export function Sidebar({ userName, userEmail, projectName, plan }: SidebarProps
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 3l9 5-9 5-9-5zM3 13l9 5 9-5" /></svg>
         Plans
       </NavItem>
+      <NavItem href="/dashboard/team" active={pathname === "/dashboard/team"}>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2 20c0-3.5 3-5 7-5s7 1.5 7 5M17 4.5a3.5 3.5 0 0 1 0 7M22 20c0-2.5-1.5-4-4-4.5"/></svg>
+        Team
+      </NavItem>
 
       {/* User profile */}
       <div style={{ display: "flex", alignItems: "center", gap: 10, padding: 10, marginTop: 4, borderTop: "1px solid #26262a" }}>
@@ -186,14 +190,13 @@ export function Sidebar({ userName, userEmail, projectName, plan }: SidebarProps
           <div style={{ fontSize: 13, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{userName}</div>
           <div style={{ fontSize: 12, color: "#a1a1aa", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{userEmail}</div>
         </div>
-        <button
-          onClick={signOut}
-          aria-label="Sign out"
-          title="Sign out"
-          style={{ flexShrink: 0, width: 32, height: 32, borderRadius: 8, border: "1px solid #33333a", background: "transparent", color: "#f87171", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
+        <Link
+          href="/dashboard/account"
+          aria-label="Account and settings"
+          style={{ flexShrink: 0, width: 32, height: 32, borderRadius: 8, border: "1px solid #33333a", background: "transparent", color: "#f4f4f5", display: "flex", alignItems: "center", justifyContent: "center", textDecoration: "none" }}
         >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" /></svg>
-        </button>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3" /><path d="M12 2v3M12 19v3M2 12h3M19 12h3" /></svg>
+        </Link>
       </div>
     </aside>
   );
