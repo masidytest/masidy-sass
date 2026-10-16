@@ -1,12 +1,21 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { createBrowserClient } from "@supabase/ssr";
 import { useRouter } from "next/navigation";
-import type { Metadata } from "next";
+
+// Skip static prerendering — this page needs browser env vars at runtime
+export const dynamic = "force-dynamic";
 
 const ACCENT = "#75ea5e";
+
+function getSupabase() {
+  return createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL ?? "https://placeholder.supabase.co",
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "placeholder"
+  );
+}
 
 export default function SignInPage() {
   const router = useRouter();
@@ -16,28 +25,29 @@ export default function SignInPage() {
   const [loading, setLoading] = useState(false);
   const [magicSent, setMagicSent] = useState(false);
 
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
-
   async function handleSignIn(e: React.FormEvent) {
     e.preventDefault();
     setError("");
     setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { error } = await getSupabase().auth.signInWithPassword({ email, password });
     if (error) { setError(error.message); setLoading(false); return; }
     router.push("/dashboard");
   }
 
   async function handleOAuth(provider: "github" | "google") {
-    await supabase.auth.signInWithOAuth({ provider, options: { redirectTo: `${location.origin}/dashboard` } });
+    await getSupabase().auth.signInWithOAuth({
+      provider,
+      options: { redirectTo: `${location.origin}/dashboard` },
+    });
   }
 
   async function handleMagicLink() {
     if (!email) { setError("Enter your email first."); return; }
     setLoading(true);
-    const { error } = await supabase.auth.signInWithOtp({ email, options: { emailRedirectTo: `${location.origin}/dashboard` } });
+    const { error } = await getSupabase().auth.signInWithOtp({
+      email,
+      options: { emailRedirectTo: `${location.origin}/dashboard` },
+    });
     if (error) { setError(error.message); } else { setMagicSent(true); }
     setLoading(false);
   }
@@ -49,8 +59,9 @@ export default function SignInPage() {
   };
   const socialStyle: React.CSSProperties = {
     display: "block", textAlign: "center", marginBottom: 10, padding: "13px 22px",
-    borderRadius: 8, border: "1px solid #33333a", textDecoration: "none", color: "#f4f4f5", cursor: "pointer",
-    background: "transparent", width: "100%", fontFamily: "inherit", fontSize: "inherit",
+    borderRadius: 8, border: "1px solid #33333a", textDecoration: "none", color: "#f4f4f5",
+    cursor: "pointer", background: "transparent", width: "100%", fontFamily: "inherit",
+    fontSize: "inherit",
   };
 
   return (
