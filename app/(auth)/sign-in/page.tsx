@@ -37,7 +37,7 @@ export default function SignInPage() {
   async function handleOAuth(provider: "github" | "google") {
     await getSupabase().auth.signInWithOAuth({
       provider,
-      options: { redirectTo: `${location.origin}/dashboard` },
+      options: { redirectTo: `${location.origin}/auth/callback` },
     });
   }
 
@@ -46,7 +46,7 @@ export default function SignInPage() {
     setLoading(true);
     const { error } = await getSupabase().auth.signInWithOtp({
       email,
-      options: { emailRedirectTo: `${location.origin}/dashboard` },
+      options: { emailRedirectTo: `${location.origin}/auth/callback` },
     });
     if (error) { setError(error.message); } else { setMagicSent(true); }
     setLoading(false);
