@@ -1,28 +1,204 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { createBrowserClient } from "@supabase/ssr";
 
 const ACCENT = "#75ea5e";
 
+function getSupabase() {
+  return createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL ?? "",
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? ""
+  );
+}
+
+export const dynamic = "force-dynamic";
+
+type Project = {
+  id: string;
+  name: string;
+  slug: string;
+  region: string;
+  status: string;
+  supabase_ref: string | null;
+  org_id: string;
+};
+
+type Org = {
+  id: string;
+  name: string;
+  plan: string;
+};
+
 export default function OverviewPage() {
+  const [org, setOrg] = useState<Org | null>(null);
+  const [project, setProject] = useState<Project | null>(null);
+  const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
-  const slug = "your-project";
-  const url = `https://${slug}.masidy.app`;
-  const publicKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...";
+
+  // Create org + project flow
+  const [step, setStep] = useState<"idle" | "creating-org" | "creating-project">("idle");
+  const [orgName, setOrgName] = useState("");
+  const [projectName, setProjectName] = useState("");
+  const [projectSlug, setProjectSlug] = useState("");
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    async function load() {
+      const supabase = getSupabase();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Get orgs the user belongs to
+      const { data: members } = await supabase
+        .from("org_members")
+        .select("org_id, orgs(id, name, plan)")
+        .eq("user_id", user.id)
+        .limit(1)
+        .single();
+
+      if (!members) { setLoading(false); return; }
+
+      const orgData = (members.orgs as unknown) as Org;
+      setOrg(orgData);
+
+      // Get first project in that org
+      const { data: proj } = await supabase
+        .from("projects")
+        .select("*")
+        .eq("org_id", orgData.id)
+        .limit(1)
+        .single();
+
+      if (proj) setProject(proj as Project);
+      setLoading(false);
+    }
+    load();
+  }, []);
+
+  async function createOrg(e: React.FormEvent) {
+    e.preventDefault();
+    setError("");
+    setStep("creating-org");
+    const supabase = getSupabase();
+    const { data, error } = await supabase.rpc("create_org", { p_name: orgName });
+    if (error) { setError(error.message); setStep("idle"); return; }
+    const { data: orgData } = await supabase.from("orgs").select("*").eq("id", data).single();
+    setOrg(orgData as Org);
+    setStep("idle");
+  }
+
+  async function createProject(e: React.FormEvent) {
+    e.preventDefault();
+    if (!org) return;
+    setError("");
+    setStep("creating-project");
+    try {
+      const r = await fetch(`/api/orgs/${org.id}/projects`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: projectName, slug: projectSlug, region: "us-east-1" }),
+      });
+      const data = await r.json();
+      if (!r.ok) { setError(data.error ?? "Failed"); setStep("idle"); return; }
+      // Reload project
+      const supabase = getSupabase();
+      const { data: proj } = await supabase.from("projects").select("*").eq("id", data.id).single();
+      setProject(proj as Project);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed");
+    }
+    setStep("idle");
+  }
 
   function copyEnv() {
-    navigator.clipboard.writeText(`MASIDY_URL=${url}\nMASIDY_KEY=${publicKey}`);
+    if (!project) return;
+    const url = `https://${project.slug}.masidy.com`;
+    navigator.clipboard.writeText(`MASIDY_URL=${url}\nMASIDY_KEY=your-public-key`);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   }
 
+  const inputStyle: React.CSSProperties = {
+    width: "100%", boxSizing: "border-box", padding: "10px 12px", borderRadius: 8,
+    border: "1px solid #33333a", background: "#0e0e0f", color: "#f4f4f5",
+    fontSize: 14, fontFamily: "inherit", marginBottom: 12,
+  };
+
+  if (loading) {
+    return (
+      <main style={{ padding: "32px 40px" }}>
+        <div style={{ color: "#a1a1aa" }}>Loading…</div>
+      </main>
+    );
+  }
+
+  // ── No org yet ──────────────────────────────────────────────
+  if (!org) {
+    return (
+      <main style={{ padding: "32px 40px", maxWidth: 480 }}>
+        <h1 style={{ margin: "0 0 8px", fontSize: 36, letterSpacing: "-.02em", fontFamily: "'Newsreader',Georgia,serif", fontWeight: 500 }}>Welcome to Masidy</h1>
+        <p style={{ margin: "0 0 28px", color: "#a1a1aa", fontSize: 15 }}>Create an organization to get started.</p>
+        <form onSubmit={createOrg} style={{ border: "1px solid #26262a", borderRadius: 12, background: "#151517", padding: 24 }}>
+          <label style={{ display: "block", fontSize: 13, color: "#a1a1aa", marginBottom: 6 }}>Organization name</label>
+          <input
+            type="text" required placeholder="Acme Inc."
+            value={orgName} onChange={e => setOrgName(e.target.value)}
+            style={inputStyle}
+          />
+          {error && <p style={{ color: "#f87171", fontSize: 14, margin: "0 0 12px" }}>{error}</p>}
+          <button type="submit" disabled={step === "creating-org"} style={{ padding: "10px 20px", borderRadius: 8, border: 0, background: "#f4f4f5", color: "#0b0b0c", fontWeight: 600, fontSize: 14, cursor: "pointer", fontFamily: "inherit" }}>
+            {step === "creating-org" ? "Creating…" : "Create organization"}
+          </button>
+        </form>
+      </main>
+    );
+  }
+
+  // ── Org exists but no project yet ───────────────────────────
+  if (!project) {
+    return (
+      <main style={{ padding: "32px 40px", maxWidth: 520 }}>
+        <h1 style={{ margin: "0 0 8px", fontSize: 36, letterSpacing: "-.02em", fontFamily: "'Newsreader',Georgia,serif", fontWeight: 500 }}>Create your first project</h1>
+        <p style={{ margin: "0 0 28px", color: "#a1a1aa", fontSize: 15 }}>A project is an isolated database + API for your app.</p>
+        <form onSubmit={createProject} style={{ border: "1px solid #26262a", borderRadius: 12, background: "#151517", padding: 24 }}>
+          <label style={{ display: "block", fontSize: 13, color: "#a1a1aa", marginBottom: 6 }}>Project name</label>
+          <input
+            type="text" required placeholder="My App"
+            value={projectName} onChange={e => setProjectName(e.target.value)}
+            style={inputStyle}
+          />
+          <label style={{ display: "block", fontSize: 13, color: "#a1a1aa", marginBottom: 6 }}>
+            Slug <span style={{ color: "#71717a" }}>— becomes myapp.masidy.com</span>
+          </label>
+          <input
+            type="text" required placeholder="my-app"
+            value={projectSlug}
+            onChange={e => setProjectSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "-"))}
+            style={inputStyle}
+          />
+          {error && <p style={{ color: "#f87171", fontSize: 14, margin: "0 0 12px" }}>{error}</p>}
+          <button type="submit" disabled={step === "creating-project"} style={{ padding: "10px 20px", borderRadius: 8, border: 0, background: "#f4f4f5", color: "#0b0b0c", fontWeight: 600, fontSize: 14, cursor: "pointer", fontFamily: "inherit" }}>
+            {step === "creating-project" ? "Provisioning…" : "Create project"}
+          </button>
+          <p style={{ margin: "12px 0 0", fontSize: 13, color: "#71717a" }}>This provisions a real Supabase database — takes ~30 seconds.</p>
+        </form>
+      </main>
+    );
+  }
+
+  // ── Project exists — show dashboard ─────────────────────────
+  const projectUrl = `https://${project.slug}.masidy.com`;
+
   return (
     <main style={{ padding: "32px 40px", display: "flex", flexDirection: "column", gap: 20 }}>
-      {/* Top bar */}
       <div style={{ display: "flex", alignItems: "baseline", gap: 16, flexWrap: "wrap" }}>
         <h1 style={{ margin: 0, fontSize: 36, letterSpacing: "-.02em", fontFamily: "'Newsreader',Georgia,serif", fontWeight: 500 }}>Overview</h1>
-        <span style={{ fontSize: 13, color: "#a1a1aa" }}><span style={{ color: ACCENT }}>●</span> Healthy · us-east-1 · Free plan</span>
+        <span style={{ fontSize: 13, color: "#a1a1aa" }}>
+          <span style={{ color: project.status === "active" ? ACCENT : "#f59e0b" }}>●</span>
+          {" "}{project.status} · {project.region} · {org.plan} plan
+        </span>
       </div>
 
       {/* Connect your app */}
@@ -36,11 +212,13 @@ export default function OverviewPage() {
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(300px,1fr))", gap: 12 }}>
           <div>
             <div style={{ fontFamily: "'Geist Mono',monospace", fontSize: 11, color: "#a1a1aa", marginBottom: 6 }}>MASIDY_URL</div>
-            <div style={{ fontFamily: "'Geist Mono',monospace", fontSize: 13, padding: "10px 12px", borderRadius: 8, background: "#0e0e0f", border: "1px solid #26262a" }}>{url}</div>
+            <div style={{ fontFamily: "'Geist Mono',monospace", fontSize: 13, padding: "10px 12px", borderRadius: 8, background: "#0e0e0f", border: "1px solid #26262a" }}>{projectUrl}</div>
           </div>
           <div>
             <div style={{ fontFamily: "'Geist Mono',monospace", fontSize: 11, color: "#a1a1aa", marginBottom: 6 }}>MASIDY_KEY (public)</div>
-            <div style={{ fontFamily: "'Geist Mono',monospace", fontSize: 13, padding: "10px 12px", borderRadius: 8, background: "#0e0e0f", border: "1px solid #26262a", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{publicKey}</div>
+            <Link href="/api-keys" style={{ display: "block", fontFamily: "'Geist Mono',monospace", fontSize: 13, padding: "10px 12px", borderRadius: 8, background: "#0e0e0f", border: "1px solid #26262a", color: ACCENT, textDecoration: "none" }}>
+              View in API keys →
+            </Link>
           </div>
         </div>
       </section>
@@ -84,7 +262,7 @@ export default function OverviewPage() {
         <section style={{ border: "1px solid #26262a", borderRadius: 12, background: "#151517", padding: 20 }}>
           <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
             <h2 style={{ margin: 0, fontSize: 17 }}>Recent requests</h2>
-            <Link href="/dashboard/logs" style={{ fontSize: 14, color: ACCENT, textDecoration: "none" }}>Open logs →</Link>
+            <Link href="/logs" style={{ fontSize: 14, color: ACCENT, textDecoration: "none" }}>Open logs →</Link>
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "70px 1fr 60px", gap: 8, padding: "10px 0", borderTop: "1px solid #26262a", fontFamily: "'Geist Mono',monospace", fontSize: 11, color: "#71717a" }}>
             <span>METHOD</span><span>PATH</span><span>STATUS</span>
