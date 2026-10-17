@@ -149,7 +149,10 @@ export default function OverviewPage() {
 
   // Layout
   const { widgets, setWidgets, KNOWN_WIDGETS } = useDashboardLayout();
+  const safeWidgets = widgets ?? [];
   const [addMenuOpen, setAddMenuOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
   // DnD
   const sensors = useSensors(
@@ -214,7 +217,6 @@ export default function OverviewPage() {
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event;
     if (over && active.id !== over.id) {
-      const safeWidgets = widgets ?? [];
       const oldIdx = safeWidgets.indexOf(String(active.id));
       const newIdx = safeWidgets.indexOf(String(over.id));
       if (oldIdx !== -1 && newIdx !== -1) {
@@ -224,15 +226,13 @@ export default function OverviewPage() {
   }
 
   function removeWidget(id: string) {
-    setWidgets((widgets ?? []).filter(w => w !== id));
+    setWidgets(safeWidgets.filter(w => w !== id));
   }
 
   function addWidget(id: string) {
-    if (!(widgets ?? []).includes(id)) setWidgets([...(widgets ?? []), id]);
+    if (!safeWidgets.includes(id)) setWidgets([...safeWidgets, id]);
     setAddMenuOpen(false);
   }
-
-  const hiddenWidgets = Array.from(KNOWN_WIDGETS).filter(id => !(widgets ?? []).includes(id));
 
   // Loading
   if (loadingBase) {
@@ -300,11 +300,22 @@ export default function OverviewPage() {
   }
 
   // ── Full overview ────────────────────────────────────────────
+  const hiddenWidgets = Array.from(KNOWN_WIDGETS).filter(id => !safeWidgets.includes(id));
+
+  // Don't render DnD until client is mounted — avoids SSR/hydration crashes
+  if (!mounted) {
+    return (
+      <main style={{ padding: "32px 40px" }}>
+        <div style={{ color: "#a1a1aa", fontSize: 14 }}>Loading dashboard…</div>
+      </main>
+    );
+  }
+
   return (
     <main style={{ padding: "32px 40px" }}>
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-        <SortableContext items={widgets ?? []} strategy={verticalListSortingStrategy}>
-          {(widgets ?? []).map(id => {
+        <SortableContext items={safeWidgets} strategy={verticalListSortingStrategy}>
+          {safeWidgets.map(id => {
             if (id === "project") {
               return (
                 <SortableSection key="project" id="project" title="Project Overview" onRemove={() => removeWidget("project")}>
