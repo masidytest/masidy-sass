@@ -23,9 +23,7 @@ export default function DatabasePage() {
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(280px,1fr))", gap: 14 }}>
         {sections.map(({ title, desc, href, icon }) => (
-          <Link key={title} href={href} style={{ border: "1px solid #26262a", borderRadius: 12, background: "#151517", padding: 22, display: "flex", gap: 16, alignItems: "flex-start", textDecoration: "none", color: "inherit" }}
-            onMouseEnter={e => (e.currentTarget.style.borderColor = "#33333a")}
-            onMouseLeave={e => (e.currentTarget.style.borderColor = "#26262a")}>
+          <Link key={title} href={href} style={{ border: "1px solid #26262a", borderRadius: 12, background: "#151517", padding: 22, display: "flex", gap: 16, alignItems: "flex-start", textDecoration: "none", color: "inherit" }}>
             <div style={{ width: 40, height: 40, borderRadius: 8, background: "#1c1c1f", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, color: ACCENT }}>
               {icon}
             </div>
