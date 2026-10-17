@@ -27,9 +27,9 @@ export function TopBar({ projectName, plan }: TopBarProps) {
       <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
         {/* Org avatar */}
         <div style={{ width: 22, height: 22, borderRadius: 6, background: "#26262a", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, color: "#f4f4f5", flexShrink: 0 }}>
-          M
+          {projectName.charAt(0).toUpperCase()}
         </div>
-        <span style={{ color: "#f4f4f5", fontWeight: 500 }}>masidy</span>
+        <span style={{ color: "#f4f4f5", fontWeight: 500 }}>{projectName}</span>
       </div>
 
       <span style={{ color: "#33333a" }}>/</span>

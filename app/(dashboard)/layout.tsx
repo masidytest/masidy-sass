@@ -21,19 +21,21 @@ export default async function DashboardLayout({ children }: { children: React.Re
       (email ? email.split("@")[0] : "User") ??
       "User";
 
-    // Fetch first project name for top bar
+    // Fetch org name and first project for top bar
     try {
       const db = admin();
       const { data: member } = await db.from("org_members")
-        .select("org_id").eq("user_id", data.user.id).limit(1).single();
+        .select("org_id, orgs(name, plan)").eq("user_id", data.user.id).limit(1).single();
       if (member) {
+        const orgData = (member.orgs as unknown) as { name: string; plan: string } | null;
+        if (orgData) {
+          projectName = orgData.name; // show org name in top bar
+          plan = (orgData.plan as string).toUpperCase();
+        }
         const { data: proj } = await db.from("projects")
           .select("name, status").eq("org_id", member.org_id)
           .order("created_at", { ascending: true }).limit(1).single();
-        if (proj) { projectName = proj.name; }
-        const { data: org } = await db.from("orgs")
-          .select("plan").eq("id", member.org_id).single();
-        if (org) plan = (org.plan as string).toUpperCase();
+        if (proj) { projectName = proj.name ?? projectName; }
       }
     } catch { /* no project yet — fine */ }
 
