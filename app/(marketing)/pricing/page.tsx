@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import { planCatalog } from "@/lib/plans";
 
 export const metadata: Metadata = { title: "Pricing" };
 
@@ -15,47 +16,29 @@ export default function PricingPage() {
           <Link href="/pricing" style={{ color: "#f4f4f5", textDecoration: "none" }}>Pricing</Link>
           <span style={{ flex: 1 }} />
           <Link href="/sign-in" style={{ color: "inherit", textDecoration: "none" }}>Sign in</Link>
-          <Link href="/sign-in" style={{ padding: "9px 16px", borderRadius: 8, background: "#f4f4f5", color: "#0b0b0c", fontWeight: 600, textDecoration: "none" }}>Start free</Link>
+          <Link href="/sign-in" style={{ padding: "9px 16px", borderRadius: 8, background: "#f4f4f5", color: "#0b0b0c", fontWeight: 600, textDecoration: "none" }}>Get started</Link>
         </nav>
 
         <header style={{ textAlign: "center", padding: "72px 0 56px" }}>
           <h1 style={{ margin: "0 0 16px", fontSize: "clamp(40px,6vw,64px)", lineHeight: 1.05, letterSpacing: "-.03em", fontFamily: "'Newsreader',Georgia,serif", fontWeight: 500 }}>
             Simple, predictable pricing<span style={{ color: ACCENT }}>.</span>
           </h1>
-          <p style={{ margin: 0, fontSize: 19, color: "#a1a1aa" }}>Start free. Upgrade when you need the room.</p>
+          <p style={{ margin: 0, fontSize: 19, color: "#a1a1aa" }}>Choose a monthly plan that fits the number of projects you run.</p>
         </header>
 
         <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(280px,1fr))", gap: 16, alignItems: "stretch" }}>
-          {/* Free */}
-          <article style={{ padding: 32, borderRadius: 14, border: "1px solid #26262a", background: "#151517", color: "#f4f4f5", display: "flex", flexDirection: "column", gap: 12 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontFamily: "'Geist Mono',monospace", fontSize: 12, color: "#a1a1aa" }}>
-              <span>FREE</span><span />
-            </div>
-            <div style={{ fontSize: 44, letterSpacing: "-.02em", fontFamily: "'Newsreader',Georgia,serif", fontWeight: 500 }}>$0<span style={{ fontSize: 18, color: "#a1a1aa" }}>/mo</span></div>
-            <p style={{ margin: "0 0 12px", color: "#a1a1aa", lineHeight: 1.5, fontSize: 15 }}>For side projects and experiments. 1 project, 500 MB database.</p>
-            <Link href="/sign-in" style={{ marginTop: "auto", textAlign: "center", padding: "13px 22px", borderRadius: 8, border: "1px solid #33333a", textDecoration: "none", color: "#f4f4f5" }}>Start free</Link>
-          </article>
-
-          {/* Pro — highlighted */}
-          <article style={{ padding: 32, borderRadius: 14, border: `1px solid ${ACCENT}`, background: "#151517", color: "#f4f4f5", display: "flex", flexDirection: "column", gap: 12 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontFamily: "'Geist Mono',monospace", fontSize: 12, color: "#a1a1aa" }}>
-              <span>PRO</span><span style={{ color: ACCENT }}>RECOMMENDED</span>
-            </div>
-            <div style={{ fontSize: 44, letterSpacing: "-.02em", fontFamily: "'Newsreader',Georgia,serif", fontWeight: 500 }}>$29<span style={{ fontSize: 18, color: "#a1a1aa" }}>/mo</span></div>
-            <p style={{ margin: "0 0 12px", color: "#a1a1aa", lineHeight: 1.5, fontSize: 15 }}>For apps with real users. 5 projects, 8 GB database, custom domains.</p>
-            <Link href="/sign-in" style={{ marginTop: "auto", textAlign: "center", padding: "13px 22px", borderRadius: 8, background: "#f4f4f5", color: "#0b0b0c", fontWeight: 600, textDecoration: "none" }}>Choose Pro</Link>
-          </article>
-
-          {/* Team */}
-          <article style={{ padding: 32, borderRadius: 14, border: "1px solid #26262a", background: "#151517", color: "#f4f4f5", display: "flex", flexDirection: "column", gap: 12 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontFamily: "'Geist Mono',monospace", fontSize: 12, color: "#a1a1aa" }}>
-              <span>TEAM</span><span />
-            </div>
-            <div style={{ fontSize: 44, letterSpacing: "-.02em", fontFamily: "'Newsreader',Georgia,serif", fontWeight: 500 }}>$99<span style={{ fontSize: 18, color: "#a1a1aa" }}>/mo</span></div>
-            <p style={{ margin: "0 0 12px", color: "#a1a1aa", lineHeight: 1.5, fontSize: 15 }}>For teams that need more control. 25 projects, 50 GB database, team roles.</p>
-            <Link href="mailto:hi@masidy.app" style={{ marginTop: "auto", textAlign: "center", padding: "13px 22px", borderRadius: 8, border: "1px solid #33333a", textDecoration: "none", color: "#f4f4f5" }}>Talk to us</Link>
-          </article>
+          {Object.values(planCatalog).map((plan, index) => (
+            <article key={plan.name} style={{ padding: 32, borderRadius: 14, border: `1px solid ${index === 2 ? ACCENT : "#26262a"}`, background: "#151517", color: "#f4f4f5", display: "flex", flexDirection: "column", gap: 12 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontFamily: "'Geist Mono',monospace", fontSize: 12, color: "#a1a1aa" }}>
+                <span>{plan.name.toUpperCase()}</span><span />
+              </div>
+              <div style={{ fontSize: 44, letterSpacing: "-.02em", fontFamily: "'Newsreader',Georgia,serif", fontWeight: 500 }}>${plan.amount / 100}<span style={{ fontSize: 18, color: "#a1a1aa" }}>/mo</span></div>
+              <p style={{ margin: "0 0 12px", color: "#a1a1aa", lineHeight: 1.5, fontSize: 15 }}>{plan.description} Up to {plan.projectLimit} {plan.projectLimit === 1 ? "project" : "projects"}.</p>
+              <Link href="/sign-in" style={{ marginTop: "auto", textAlign: "center", padding: "13px 22px", borderRadius: 8, border: index === 2 ? 0 : "1px solid #33333a", background: index === 2 ? "#f4f4f5" : "transparent", color: index === 2 ? "#0b0b0c" : "#f4f4f5", fontWeight: 600, textDecoration: "none" }}>Choose {plan.name}</Link>
+            </article>
+          ))}
         </section>
+        <p style={{ textAlign: "center", color: "#71717a", fontSize: 13, marginTop: 22 }}>Billed monthly in USD. Project limits are enforced per organization.</p>
 
         <footer style={{ padding: 48 }}>
           <Link href="/" style={{ fontSize: 14, color: "#a1a1aa", textDecoration: "none" }}>← Back home</Link>

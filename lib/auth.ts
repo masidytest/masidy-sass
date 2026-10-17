@@ -21,5 +21,12 @@ export async function requireProject(projectId: string, allowed: Role[]) {
   const who = await requireRole(project.org_id, allowed);
   return { project, ...who };
 }
-export const fail = (e: unknown) =>
-  e instanceof HttpError ? Response.json({ error: e.message }, { status: e.status }) : Response.json({ error: "Server error" }, { status: 500 });
+export const fail = (e: unknown) => {
+  if (e instanceof HttpError) return Response.json({ error: e.message }, { status: e.status });
+  if (e instanceof Error) {
+    return Response.json({ error: e.message, ...(e.name === "ZodError" ? {} : { retryable: true }) }, {
+      status: e.name === "ZodError" ? 400 : 502,
+    });
+  }
+  return Response.json({ error: "Unexpected server error" }, { status: 500 });
+};

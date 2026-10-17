@@ -10,7 +10,12 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
     const h = { Authorization: `Bearer ${env.SUPABASE_MGMT_TOKEN}` };
 
     const r = await fetch(`${base}/projects/${project.supabase_ref}/advisors`, { headers: h });
-    if (!r.ok) return Response.json([]);
+    if (!r.ok) {
+      return Response.json(
+        { error: `Supabase advisor scan failed (HTTP ${r.status})` },
+        { status: 502 }
+      );
+    }
 
     const data = await r.json();
 

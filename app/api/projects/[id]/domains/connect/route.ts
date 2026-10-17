@@ -12,7 +12,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const { domain } = body.parse(await req.json());
     const { error } = await admin().from("project_domains").insert({ project_id: project.id, domain, kind: "connected" });
     if (error) return Response.json({ error: "Domain already in use" }, { status: 409 });
-    await attachGatewayDomain(domain);
+    try {
+      await attachGatewayDomain(domain);
+    } catch (error) {
+      await admin().from("project_domains").delete().eq("project_id", project.id).eq("domain", domain);
+      throw error;
+    }
     return Response.json({ domain, status: "pending", next: "Point your DNS at Vercel, then check status." }, { status: 202 });
   } catch (e) { return fail(e); }
 }

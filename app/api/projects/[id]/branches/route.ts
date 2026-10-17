@@ -5,15 +5,19 @@ import type { BranchInfo } from "@/lib/types/overview";
 export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { project } = await requireProject((await params).id, ["owner", "admin", "developer"]);
-    if (!project.supabase_ref) return Response.json([]);
+    if (!project.supabase_ref) return Response.json({ error: "Project is still provisioning" }, { status: 409 });
 
     const r = await fetch(
       `https://api.supabase.com/v1/projects/${project.supabase_ref}/branches`,
       { headers: { Authorization: `Bearer ${env.SUPABASE_MGMT_TOKEN}` } }
     );
 
-    // Branches are a paid feature — return empty array gracefully
-    if (!r.ok) return Response.json([]);
+    if (!r.ok) {
+      return Response.json(
+        { error: `Supabase branch listing failed (HTTP ${r.status})` },
+        { status: 502 }
+      );
+    }
 
     const data = await r.json();
     const branches: BranchInfo[] = (Array.isArray(data) ? data : []).map((b: Record<string, unknown>) => ({

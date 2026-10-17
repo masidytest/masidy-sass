@@ -15,8 +15,10 @@ const NAV = [
   { href: "/dashboard/table-editor",   label: "Table Editor",     icon: "M3 4h18a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zm0 6h18M9 4v16" },
   { href: "/dashboard/sql-editor",     label: "SQL Editor",       icon: "m8 8-5 4 5 4M16 8l5 4-5 4" },
   { href: "/dashboard/database",       label: "Database",         icon: "M12 2C7 2 3 3.3 3 5v14c0 1.7 4 3 9 3s9-1.3 9-3V5c0-1.7-4-3-9-3zm0 0M3 12c0 1.7 4 3 9 3s9-1.3 9-3" },
+  { href: "/dashboard/backups",        label: "Backups",          icon: "M4 4v6h6M5 15a8 8 0 1 0 1-7" },
   { href: "/dashboard/auth",           label: "Authentication",   icon: "M12 8a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm-8 9c0-4 4-6 8-6s8 2 8 6" },
   { href: "/dashboard/storage",        label: "Storage",          icon: "M4 7l8-4 8 4v10l-8 4-8-4z" },
+  { href: "/dashboard/email",          label: "Email",            icon: "M3 5h18v14H3zM3 6l9 7 9-7" },
   { href: "/dashboard/edge-functions", label: "Edge Functions",   icon: "M13 2 3 14h9l-1 8 10-12h-9l1-8z" },
   { href: "/dashboard/realtime",       label: "Realtime",         icon: "M22 12h-4l-3 9L9 3l-3 9H2" },
   { href: "/dashboard/compute",        label: "Compute",          icon: "M2 3h20v14a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V3zm6 18h8m-4-4v4" },
@@ -26,10 +28,13 @@ const NAV = [
   { href: "/dashboard/integrations",   label: "Integrations",     icon: "M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" },
   { href: "/dashboard/api-keys",       label: "API Keys",         icon: "M8 15a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm3-1 9-9m-5 4 3 3" },
   { href: "/dashboard/domains",        label: "Domains",          icon: "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zm0 0M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18" },
+  { href: "/dashboard/team",           label: "Team",             icon: "M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2m16-11a4 4 0 1 0 0-8m4 19v-2a4 4 0 0 0-3-3.87M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z" },
+  { href: "/dashboard/plans",          label: "Plans & billing",  icon: "M3 5h18v14H3zM3 10h18m-14 5h4" },
   { href: "/dashboard/settings",       label: "Project Settings", icon: "M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6zm0-7v3m0 15v3m-7-7H2m18 0h-3m-12.7-9.3-2.1-2.1m16.9 0-2.1 2.1M4.3 19.3l-2.1 2.1m16.9 0-2.1-2.1" },
+  { href: "/dashboard/account",        label: "Account",          icon: "M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2m8-10a4 4 0 1 0 0-8 4 4 0 0 0 0 8z" },
 ];
 
-const DIVIDERS_AFTER = new Set([2, 7, 11, 13]);
+const DIVIDERS_AFTER = new Set([4, 9, 13, 16]);
 
 interface SidebarProps { userName: string; userEmail: string; projectName: string; plan: string }
 
@@ -50,6 +55,8 @@ export function Sidebar({ userName, userEmail }: SidebarProps) {
   const [hovered, setHovered] = useState(false);
   const [modeMenuOpen, setModeMenuOpen] = useState(false);
   const [tooltip, setTooltip] = useState<string | null>(null);
+  const [signingOut, setSigningOut] = useState(false);
+  const [signOutError, setSignOutError] = useState("");
   const modeMenuRef = useRef<HTMLDivElement>(null);
 
   // Persist mode
@@ -80,12 +87,20 @@ export function Sidebar({ userName, userEmail }: SidebarProps) {
   const initial = (userName ?? "").trim().charAt(0).toUpperCase() || "?";
 
   async function signOut() {
-    const sb = createBrowserClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    );
-    await sb.auth.signOut();
-    router.push("/sign-in");
+    setSigningOut(true);
+    setSignOutError("");
+    try {
+      const sb = createBrowserClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL ?? "",
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? ""
+      );
+      const { error } = await sb.auth.signOut();
+      if (error) throw error;
+      router.push("/sign-in");
+    } catch (error) {
+      setSignOutError(error instanceof Error ? error.message : "Could not sign out.");
+      setSigningOut(false);
+    }
   }
 
   // Determine if labels should show
@@ -241,10 +256,12 @@ export function Sidebar({ userName, userEmail }: SidebarProps) {
         </div>
 
         {/* Avatar + sign out */}
+        {signOutError && <p role="alert" style={{ maxWidth: 210, margin: 0, padding: "4px 8px", color: "#f87171", fontSize: 11, overflowWrap: "anywhere" }}>{signOutError}</p>}
         <button
           onClick={signOut}
+          disabled={signingOut}
           aria-label={`Sign out (${userEmail})`}
-          title={`${userName} · ${userEmail}\nClick to sign out`}
+          title={`${userName} · ${userEmail}\n${signingOut ? "Signing out…" : "Click to sign out"}`}
           style={{
             display: "flex", alignItems: "center", gap: 8,
             width: showLabels ? "100%" : 36, height: 34,

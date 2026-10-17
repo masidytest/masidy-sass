@@ -98,7 +98,7 @@ export default function SignInPage() {
         )}
 
         <p style={{ margin: "24px 0 0", textAlign: "center", fontSize: 14, color: "#a1a1aa" }}>
-          New here? <Link href="/sign-in" style={{ color: "#f4f4f5", fontWeight: 600, textDecoration: "none" }}>Start free</Link>
+          New here? <Link href="/sign-in" style={{ color: "#f4f4f5", fontWeight: 600, textDecoration: "none" }}>Create an account</Link>
         </p>
       </div>
     </div>

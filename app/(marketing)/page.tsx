@@ -17,7 +17,7 @@ export default function HomePage() {
           <Link href="/pricing" style={{ color: "inherit", textDecoration: "none" }}>Pricing</Link>
           <span style={{ flex: 1 }} />
           <Link href="/sign-in" style={{ color: "inherit", textDecoration: "none" }}>Sign in</Link>
-          <Link href="/sign-in" style={{ padding: "9px 16px", borderRadius: 8, background: "#f4f4f5", color: "#0b0b0c", fontWeight: 600, textDecoration: "none" }}>Start free</Link>
+          <Link href="/sign-in" style={{ padding: "9px 16px", borderRadius: 8, background: "#f4f4f5", color: "#0b0b0c", fontWeight: 600, textDecoration: "none" }}>Get started</Link>
         </nav>
 
         {/* Hero */}
@@ -34,7 +34,7 @@ export default function HomePage() {
               A database, logins, domains and email behind one API and one dashboard, built for developers.
             </p>
             <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-              <Link href="/sign-in" style={{ padding: "13px 22px", borderRadius: 8, background: "#f4f4f5", color: "#0b0b0c", fontWeight: 600, textDecoration: "none" }}>Start free</Link>
+              <Link href="/sign-in" style={{ padding: "13px 22px", borderRadius: 8, background: "#f4f4f5", color: "#0b0b0c", fontWeight: 600, textDecoration: "none" }}>Get started</Link>
               <Link href="/pricing" style={{ padding: "13px 22px", borderRadius: 8, border: "1px solid #33333a", textDecoration: "none", color: "inherit" }}>See pricing</Link>
             </div>
           </div>
@@ -103,7 +103,7 @@ export default function HomePage() {
         <section style={{ textAlign: "center", padding: "80px 0 96px", borderTop: "1px solid #26262a" }}>
           <h2 style={{ margin: "0 0 28px", fontSize: "clamp(34px,5vw,56px)", letterSpacing: "-.02em", fontFamily: "'Newsreader',Georgia,serif", fontWeight: 500 }}>Start building on Masidy</h2>
           <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
-            <Link href="/sign-in" style={{ padding: "13px 22px", borderRadius: 8, background: "#f4f4f5", color: "#0b0b0c", fontWeight: 600, textDecoration: "none" }}>Start free</Link>
+            <Link href="/sign-in" style={{ padding: "13px 22px", borderRadius: 8, background: "#f4f4f5", color: "#0b0b0c", fontWeight: 600, textDecoration: "none" }}>Get started</Link>
             <Link href="/pricing" style={{ padding: "13px 22px", borderRadius: 8, border: "1px solid #33333a", textDecoration: "none", color: "inherit" }}>See pricing</Link>
           </div>
         </section>

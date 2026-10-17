@@ -11,6 +11,10 @@ const schema = z.object({
   VERCEL_GATEWAY_PROJECT_ID: z.string().min(1),
   RESEND_API_KEY: z.string().min(1),
   GATEWAY_BASE_DOMAIN: z.string().min(3),
+  STRIPE_SECRET_KEY: z.string().optional(),
+  STRIPE_WEBHOOK_SECRET: z.string().optional(),
+  STRIPE_WEBHOOK_URL: z.string().url().optional(),
+  NEXT_PUBLIC_APP_URL: z.string().url().optional(),
 });
 
 // Server only. Never import this file from client components.
@@ -31,6 +35,10 @@ try {
     VERCEL_GATEWAY_PROJECT_ID: "placeholder",
     RESEND_API_KEY: "placeholder",
     GATEWAY_BASE_DOMAIN: "masidy.app",
+    STRIPE_SECRET_KEY: undefined,
+    STRIPE_WEBHOOK_SECRET: undefined,
+    STRIPE_WEBHOOK_URL: undefined,
+    NEXT_PUBLIC_APP_URL: "https://masidy.com",
   };
 }
 

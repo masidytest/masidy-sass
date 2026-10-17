@@ -2,9 +2,13 @@
 create table orgs (
   id uuid primary key default gen_random_uuid(),
   name text not null,
-  plan text not null default 'free' check (plan in ('free','pro','team')),
+  plan text not null default 'free' check (plan in ('free','starter','balance','pro','team')),
+  stripe_customer_id text unique,
+  stripe_subscription_id text unique,
   created_at timestamptz not null default now()
 );
+alter table orgs add column if not exists stripe_customer_id text unique;
+alter table orgs add column if not exists stripe_subscription_id text unique;
 create table org_members (
   org_id uuid not null references orgs on delete cascade,
   user_id uuid not null references auth.users on delete cascade,
@@ -24,7 +28,7 @@ create table projects (
 create table project_domains (
   id uuid primary key default gen_random_uuid(),
   project_id uuid not null references projects on delete cascade,
-  domain text not null unique,
+  domain text not null,
   kind text not null check (kind in ('bought','connected')),
   status text not null default 'pending',
   order_id text,
@@ -36,6 +40,40 @@ create table email_domains (
   resend_domain_id text not null,
   status text not null default 'not_started'
 );
+
+-- Checkout and renewal data is only accessed by trusted server routes/webhooks.
+create table if not exists domain_orders (
+  id uuid primary key default gen_random_uuid(),
+  project_id uuid not null references projects on delete cascade,
+  domain text not null unique,
+  contact_information jsonb not null,
+  purchase_amount_cents integer not null check (purchase_amount_cents > 0),
+  renewal_amount_cents integer not null check (renewal_amount_cents > 0),
+  expected_purchase_price numeric not null check (expected_purchase_price > 0),
+  expected_renewal_price numeric not null check (expected_renewal_price > 0),
+  stripe_checkout_session_id text unique,
+  stripe_payment_intent_id text,
+  stripe_subscription_id text unique,
+  vercel_order_id text,
+  status text not null default 'pending_payment'
+    check (status in ('pending_payment','processing','registered','renewal_failed','renewal_cancelled','fulfillment_failed','checkout_expired')),
+  error_message text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create unique index if not exists domain_orders_domain_key on domain_orders(domain) where status <> 'checkout_expired';
+alter table domain_orders enable row level security;
+create table if not exists domain_renewals (
+  id uuid primary key default gen_random_uuid(),
+  domain_order_id uuid not null references domain_orders on delete cascade,
+  stripe_invoice_id text not null unique,
+  status text not null default 'processing' check (status in ('processing','renewed','failed')),
+  vercel_order_id text,
+  error_message text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+alter table domain_renewals enable row level security;
 
 create function is_member(p_org uuid, p_roles text[]) returns boolean
 language sql security definer set search_path = public stable as $$
