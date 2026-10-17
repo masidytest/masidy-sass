@@ -30,7 +30,13 @@ export function Sidebar({ userName, userEmail }: SidebarProps) {
   const router = useRouter();
   const [open, setOpen] = useState(true);
 
-  const initials = userName.split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2) || "?";
+  const initials = (userName ?? "")
+    .split(" ")
+    .filter(Boolean)
+    .map(w => w[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2) || "?";
 
   async function signOut() {
     const supabase = createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
