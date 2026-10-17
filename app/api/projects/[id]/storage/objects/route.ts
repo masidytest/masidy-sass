@@ -1,6 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { fail, requireProject } from "@/lib/auth";
-import { projectServiceRoleKey } from "@/lib/supabase-mgmt";
+import { projectAdminKey } from "@/lib/supabase-mgmt";
 import { z } from "zod";
 
 const objectInput = z.object({
@@ -9,7 +9,7 @@ const objectInput = z.object({
 });
 
 async function storageClient(ref: string) {
-  const key = await projectServiceRoleKey(ref);
+  const key = await projectAdminKey(ref);
   return createClient(`https://${ref}.supabase.co`, key, {
     auth: { autoRefreshToken: false, persistSession: false },
   }).storage;

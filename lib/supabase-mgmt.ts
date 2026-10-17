@@ -1,4 +1,5 @@
 import { randomBytes } from "node:crypto";
+import { createClient } from "@supabase/supabase-js";
 import { env } from "./env";
 
 const base = "https://api.supabase.com/v1";
@@ -45,13 +46,20 @@ export async function queryCustomerDatabase<T = Record<string, unknown>>(
   throw new Error("Supabase returned an unexpected database query response");
 }
 
-export async function projectServiceRoleKey(ref: string) {
+export async function projectAdminKey(ref: string) {
   const keys = await supabaseManagementRequest<{ name: string; api_key: string }[]>(
     `/projects/${encodeURIComponent(ref)}/api-keys`,
   );
-  const key = keys.find(item => item.name === "service_role");
-  if (!key) throw new Error("Customer project service-role key is unavailable");
+  const key = keys.find(item => item.name === "secret") ?? keys.find(item => item.name === "service_role");
+  if (!key) throw new Error("Customer project server key is unavailable");
   return key.api_key;
+}
+
+export async function customerProjectAdmin(ref: string) {
+  const key = await projectAdminKey(ref);
+  return createClient(`https://${encodeURIComponent(ref)}.supabase.co`, key, {
+    auth: { autoRefreshToken: false, persistSession: false, detectSessionInUrl: false },
+  });
 }
 
 export async function createCustomerProject(name: string, region: string) {

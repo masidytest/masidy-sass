@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useProject } from "@/lib/hooks/use-project";
 
-type ProjectStats = { cpu: number | null; disk: number | null; ram: number | null; connections: string };
+type ProjectStats = { cpuLoad: number | null; disk: number | null; ram: number | null; connections: string | null };
 type ComputeVariant = { id: string; name: string; price?: { amount?: number; interval?: string; description?: string } };
 type ComputeAddon = { type: string; name: string; variants: ComputeVariant[] };
 type AddonsData = { selected_addons?: { type: string; variant: ComputeVariant }[]; available_addons?: ComputeAddon[] };
@@ -64,9 +64,9 @@ export default function ComputeClient() {
   if (projectError || !project) return <main style={{ padding: "32px 40px", color: "#f87171" }}>{projectError ?? "No project available."}</main>;
 
   const metrics = [
-    { label: "CPU utilization", value: stats?.cpu == null ? "Unavailable" : `${stats.cpu}%` },
+    { label: "CPU load · 15m", value: stats?.cpuLoad == null ? "Unavailable" : stats.cpuLoad.toFixed(2) },
     { label: "Memory utilization", value: stats?.ram == null ? "Unavailable" : `${stats.ram}%` },
-    { label: "Disk I/O", value: stats?.disk == null ? "Unavailable" : `${stats.disk}%` },
+    { label: "Disk usage", value: stats?.disk == null ? "Unavailable" : `${stats.disk}%` },
     { label: "Database connections", value: stats?.connections ?? "Unavailable" },
   ];
   const computeAddon = addons?.available_addons?.find(item => item.type.toLowerCase().includes("compute"));
@@ -105,7 +105,7 @@ export default function ComputeClient() {
       <div style={{ display: "flex", alignItems: "flex-end", gap: 16, marginBottom: 24, flexWrap: "wrap" }}>
         <div style={{ flex: 1 }}>
           <h1 style={{ margin: "0 0 6px", fontSize: 36, letterSpacing: "-.02em", fontFamily: "'Newsreader',Georgia,serif", fontWeight: 500 }}>Compute</h1>
-          <p style={{ margin: 0, color: "#a1a1aa", fontSize: 15 }}>Live utilization for {project.name}.</p>
+          <p style={{ margin: 0, color: "#a1a1aa", fontSize: 15 }}>Live resource and connection metrics for {project.name}.</p>
         </div>
         <button onClick={() => void loadStats()} disabled={loading} style={{ padding: "8px 14px", borderRadius: 8, border: "1px solid #33333a", background: "transparent", color: "#f4f4f5", fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
           {loading ? "Refreshing…" : "Refresh"}

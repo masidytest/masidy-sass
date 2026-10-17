@@ -150,7 +150,7 @@ function ConnectSection({ projectUrl, publicKey, keyError, copied, onCopy }: {
   );
 }
 
-type ProjectStats = { cpu: number | null; ram: number | null; disk: number | null; connections: string | null };
+type ProjectStats = { cpuLoad: number | null; ram: number | null; disk: number | null; connections: string | null };
 
 function MetricsSection({ project }: { project: Project }) {
   const [stats, setStats] = useState<ProjectStats | null>(null);
@@ -171,7 +171,7 @@ function MetricsSection({ project }: { project: Project }) {
       const [statsResult, metricsResult] = await Promise.allSettled([
         fetch(`/api/projects/${project.id}/stats`, { signal: controller.signal }).then(async response => {
           const data = await response.json();
-          if (!response.ok) throw new Error(data.error ?? "Could not load provider usage");
+          if (!response.ok) throw new Error(data.error ?? "Could not load project metrics");
           return data as ProjectStats;
         }),
         fetch(`/api/projects/${project.id}/metrics?window=60m`, { signal: controller.signal }).then(async response => {
@@ -188,7 +188,7 @@ function MetricsSection({ project }: { project: Project }) {
       ]);
       if (controller.signal.aborted) return;
       if (statsResult.status === "fulfilled") setStats(statsResult.value);
-      else setStatsError(statsResult.reason instanceof Error ? statsResult.reason.message : "Could not load provider usage");
+      else setStatsError(statsResult.reason instanceof Error ? statsResult.reason.message : "Could not load project metrics");
       if (metricsResult.status === "fulfilled") setRequestCount(metricsResult.value);
       else setMetricsError(metricsResult.reason instanceof Error ? metricsResult.reason.message : "Could not load request metrics");
       setLoading(false);
@@ -199,9 +199,9 @@ function MetricsSection({ project }: { project: Project }) {
   }, [project.id]);
 
   const values = [
-    { label: "CPU utilization", value: stats?.cpu == null ? "Unavailable" : `${stats.cpu}%`, error: statsError },
+    { label: "CPU load · 15m", value: stats?.cpuLoad == null ? "Unavailable" : stats.cpuLoad.toFixed(2), error: statsError },
     { label: "Memory utilization", value: stats?.ram == null ? "Unavailable" : `${stats.ram}%`, error: statsError },
-    { label: "Disk I/O", value: stats?.disk == null ? "Unavailable" : `${stats.disk}%`, error: statsError },
+    { label: "Disk usage", value: stats?.disk == null ? "Unavailable" : `${stats.disk}%`, error: statsError },
     { label: "Database connections", value: stats?.connections ?? "Unavailable", error: statsError },
     { label: "Requests · last hour", value: requestCount?.toLocaleString() ?? "Unavailable", error: metricsError },
   ];

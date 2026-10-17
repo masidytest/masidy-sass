@@ -2,9 +2,9 @@ export type ServiceHealth = { name: string; status: "HEALTHY" | "UNHEALTHY" | "U
 export type ReplicaNode = { ref: string; region: string; status: string };
 export type InfraData = {
   name: string; region: string; status: string; compute: string;
-  ref: string; readReplicas: ReplicaNode[]; health: ServiceHealth[];
+  ref: string; readReplicas: ReplicaNode[] | null; health: ServiceHealth[];
 };
-export type DbStats = { cpu: number; disk: number; ram: number; connections: string };
+export type DbStats = { cpuLoad: number | null; disk: number | null; ram: number | null; connections: string | null };
 export type BranchInfo = { id: string; name: string; status: string; created_at: string };
 export type BackupInfo = { id: string; status: string; created_at: string; size_bytes?: number };
 export type MetricBucket = { ts: string; ok: number; warn: number; error: number };

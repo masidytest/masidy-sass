@@ -12,12 +12,14 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
     const ref = project.supabase_ref;
     const h = { Authorization: `Bearer ${env.SUPABASE_MGMT_TOKEN}` };
 
-    const [detailsRes, healthRes, replicasRes] = await Promise.all([
+    const healthQuery = new URLSearchParams({
+      services: "auth,db,pooler,realtime,rest,storage",
+    });
+    const [detailsRes, healthRes] = await Promise.all([
       fetch(`${MGMT}/projects/${ref}`, { headers: h }),
-      fetch(`${MGMT}/projects/${ref}/health`, { headers: h }),
-      fetch(`${MGMT}/projects/${ref}/read-replicas`, { headers: h }),
+      fetch(`${MGMT}/projects/${ref}/health?${healthQuery}`, { headers: h }),
     ]);
-    for (const response of [detailsRes, healthRes, replicasRes]) {
+    for (const response of [detailsRes, healthRes]) {
       if (!response.ok) {
         throw new Error(`Supabase infrastructure request failed (HTTP ${response.status})`);
       }
@@ -36,18 +38,15 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
     for (const s of healthItems) {
       health.push({
         name: s.name ?? s.service ?? "unknown",
-        status: s.status === "HEALTHY" ? "HEALTHY" : s.status === "UNHEALTHY" ? "UNHEALTHY" : "UNKNOWN",
+        status: s.healthy === true || s.status === "ACTIVE_HEALTHY"
+          ? "HEALTHY"
+          : s.healthy === false || s.status === "UNHEALTHY"
+            ? "UNHEALTHY"
+            : "UNKNOWN",
       });
     }
 
-    const readReplicas: InfraData["readReplicas"] = [];
-    const replicasResponse = await replicasRes.json();
-    if (!Array.isArray(replicasResponse)) throw new Error("Supabase returned an unexpected read replica response");
-    for (const rr of replicasResponse) {
-      readReplicas.push({ ref: rr.ref ?? rr.id ?? "", region: rr.region ?? "", status: rr.status ?? "unknown" });
-    }
-
-    const data: InfraData = { name, region, status, compute, ref, readReplicas, health };
+    const data: InfraData = { name, region, status, compute, ref, readReplicas: null, health };
     return Response.json(data);
   } catch (e) { return fail(e); }
 }
