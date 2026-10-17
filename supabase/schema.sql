@@ -66,3 +66,16 @@ create policy domains_read on project_domains for select using (
   exists (select 1 from projects p where p.id = project_id and is_member(p.org_id, array['owner','admin','developer','read_only'])));
 create policy email_read on email_domains for select using (
   exists (select 1 from projects p where p.id = project_id and is_member(p.org_id, array['owner','admin','developer','read_only'])));
+
+-- User preferences (dashboard layout, etc.)
+create table if not exists user_preferences (
+  user_id uuid not null references auth.users on delete cascade,
+  key text not null,
+  value jsonb not null default '{}',
+  updated_at timestamptz not null default now(),
+  primary key (user_id, key)
+);
+alter table user_preferences enable row level security;
+create policy prefs_own on user_preferences
+  using (user_id = auth.uid())
+  with check (user_id = auth.uid());
