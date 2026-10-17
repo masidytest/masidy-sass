@@ -6,22 +6,45 @@ const base = "https://api.vercel.com";
 const q = `teamId=${env.VERCEL_TEAM_ID}`;
 const h = { Authorization: `Bearer ${env.VERCEL_TOKEN}`, "Content-Type": "application/json" };
 
-// Registrar API pricing is returned in USD.
-export async function domainPrice(domain: string) {
-  const encoded = encodeURIComponent(domain);
-  const [priceResponse, availabilityResponse] = await Promise.all([
-    fetch(`${base}/v1/registrar/domains/${encoded}/price?${q}`, { headers: h }),
-    fetch(`${base}/v1/registrar/domains/${encoded}/availability?${q}`, { headers: h }),
-  ]);
-  if (!priceResponse.ok) throw new Error(`price lookup failed: ${priceResponse.status}`);
-  if (!availabilityResponse.ok) throw new Error(`availability lookup failed: ${availabilityResponse.status}`);
-  const price = await priceResponse.json() as {
-    purchasePrice: number | string;
-    renewalPrice: number | string;
-    years: number;
+type DomainSearchResult = {
+  domain: string;
+  available: boolean;
+  years?: number;
+  price?: number | string;
+  renewalPrice?: number | string;
+};
+
+type DomainQuote =
+  | { available: false; purchasePrice: null; renewalPrice: null; years: number }
+  | { available: true; purchasePrice: number | string; renewalPrice: number | string; years: number };
+
+// Vercel's domain search API returns availability and USD prices without authentication.
+export async function domainPrice(domain: string): Promise<DomainQuote> {
+  const response = await fetch(`${base}/v1/registrar/domains/search`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ domains: [domain] }),
+    signal: AbortSignal.timeout(8000),
+    cache: "no-store",
+  });
+  if (!response.ok) throw new Error(`domain search failed: ${response.status}`);
+  const data = await response.json() as { results?: DomainSearchResult[] };
+  const result = data.results?.find(item => item.domain.toLowerCase() === domain.toLowerCase());
+  if (!result || typeof result.available !== "boolean") {
+    throw new Error("Vercel returned an unexpected domain search response");
+  }
+  if (!result.available) {
+    return { available: false, purchasePrice: null, renewalPrice: null, years: result.years ?? 1 };
+  }
+  if (result.price === undefined || result.renewalPrice === undefined) {
+    throw new Error("Vercel did not return domain pricing");
+  }
+  return {
+    available: true,
+    purchasePrice: result.price,
+    renewalPrice: result.renewalPrice,
+    years: result.years ?? 1,
   };
-  const availability = await availabilityResponse.json() as { available: boolean };
-  return { ...price, available: availability.available };
 }
 
 export type DomainContact = {
@@ -62,3 +85,24 @@ export async function renewDomain(domain: string, expectedPrice: number, contact
 // Attach a hostname to the gateway project, so https://api.customer.com reaches the customer's backend.
 export const attachGatewayDomain = (name: string) =>
   vercel.projects.addProjectDomain({ idOrName: env.VERCEL_GATEWAY_PROJECT_ID, teamId: env.VERCEL_TEAM_ID, requestBody: { name } });
+
+export async function gatewayDomainStatus(domain: string) {
+  const [projectDomain, config] = await Promise.all([
+    vercel.projects.getProjectDomain({
+      idOrName: env.VERCEL_GATEWAY_PROJECT_ID,
+      domain,
+      teamId: env.VERCEL_TEAM_ID,
+    }),
+    vercel.domains.getDomainConfig({ domain, teamId: env.VERCEL_TEAM_ID }),
+  ]);
+  const projectHost = `${projectDomain.name}.${env.GATEWAY_BASE_DOMAIN}`;
+  const isApex = projectDomain.name.toLowerCase() === projectDomain.apexName.toLowerCase();
+  const record = isApex
+    ? { type: "A", name: "@", value: "76.76.21.21" }
+    : { type: "CNAME", name: projectDomain.name.slice(0, -(projectDomain.apexName.length + 1)), value: projectHost };
+  return {
+    active: projectDomain.verified && !config.misconfigured,
+    dnsConfigured: !config.misconfigured,
+    record,
+  };
+}

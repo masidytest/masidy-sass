@@ -83,7 +83,7 @@ export default function EmailPage() {
       const data = await response.json();
       if (!response.ok) throw new Error(data.error ?? "Could not verify the domain");
       setDomain(data as EmailDomain);
-      setMessage(data.status === "verified" ? "Sending domain verified." : `Resend reports status: ${data.status}`);
+      setMessage(data.status === "verified" ? "Sending domain verified." : `Current status: ${data.status.replaceAll("_", " ")}`);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Could not verify the domain");
       setMessageError(true);
@@ -99,7 +99,7 @@ export default function EmailPage() {
     <main style={{ padding: "32px 40px" }}>
       <div style={{ marginBottom: 24 }}>
         <h1 style={{ margin: "0 0 6px", fontSize: 36, letterSpacing: "-.02em", fontFamily: "'Newsreader',Georgia,serif", fontWeight: 500 }}>Email</h1>
-        <p style={{ margin: 0, color: "#a1a1aa", fontSize: 15 }}>Set up a sending domain with Resend and verify its DNS records.</p>
+        <p style={{ margin: 0, color: "#a1a1aa", fontSize: 15 }}>Set up a sending domain and verify its DNS records.</p>
       </div>
 
       <section style={panel}>
@@ -125,7 +125,7 @@ export default function EmailPage() {
                   <div>
                     <div style={{ fontSize: 15, fontWeight: 600 }}>{domain.domain}</div>
                     <div style={{ marginTop: 4, fontSize: 13, color: domain.status === "verified" ? "#75ea5e" : "#a1a1aa" }}>
-                      Resend status: {domain.status.replaceAll("_", " ")}
+                      Status: {domain.status.replaceAll("_", " ")}
                     </div>
                   </div>
                   <button onClick={() => void verifyDomain()} disabled={verifying} style={button}>
@@ -133,7 +133,7 @@ export default function EmailPage() {
                   </button>
                 </div>
                 <h3 style={{ margin: "16px 0 8px", fontSize: 14 }}>Required DNS records</h3>
-                {domain.records.length === 0 ? <p style={{ color: "#a1a1aa", fontSize: 13 }}>Resend has not returned DNS records for this domain.</p>
+                {domain.records.length === 0 ? <p style={{ color: "#a1a1aa", fontSize: 13 }}>DNS records are not available yet. Refresh or try again shortly.</p>
                   : domain.records.map((record, index) => (
                     <div key={`${record.type}-${record.name}-${index}`} style={{ padding: "12px 0", borderTop: "1px solid #26262a", fontSize: 13 }}>
                       <div style={{ display: "flex", justifyContent: "space-between", gap: 12, marginBottom: 6 }}>
@@ -148,7 +148,7 @@ export default function EmailPage() {
                       </div>
                     </div>
                   ))}
-                {domain.status === "verified" && <p style={{ color: "#75ea5e", fontSize: 13 }}>This domain is verified and ready to use with Resend.</p>}
+                {domain.status === "verified" && <p style={{ color: "#75ea5e", fontSize: 13 }}>This domain is verified and ready for email delivery.</p>}
               </>
             )}
           </>

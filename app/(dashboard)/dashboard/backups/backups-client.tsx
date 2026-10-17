@@ -71,7 +71,7 @@ export default function BackupsClient() {
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error ?? "Could not start point-in-time restore");
-      setRestoreMessage("Supabase accepted the restore request. The project may be unavailable while recovery runs.");
+      setRestoreMessage("Restore request accepted. The project may be unavailable while recovery runs.");
       setConfirmProjectName("");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not start point-in-time restore");
@@ -88,7 +88,7 @@ export default function BackupsClient() {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 16, marginBottom: 24 }}>
         <div>
           <h1 style={{ margin: "0 0 6px", fontSize: 36, letterSpacing: "-.02em", fontFamily: "'Newsreader',Georgia,serif", fontWeight: 500 }}>Backups</h1>
-          <p style={{ margin: 0, color: "#a1a1aa", fontSize: 15 }}>Backups reported by Supabase for {project.name}.</p>
+          <p style={{ margin: 0, color: "#a1a1aa", fontSize: 15 }}>Available backups for {project.name}.</p>
         </div>
         <button onClick={() => void loadBackups()} disabled={loading} style={{ padding: "8px 14px", borderRadius: 8, border: "1px solid #33333a", background: "transparent", color: "#f4f4f5", fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
           {loading ? "Refreshing…" : "Refresh"}
@@ -102,7 +102,7 @@ export default function BackupsClient() {
         </div>
         {loading ? <p style={{ padding: 32, color: "#a1a1aa", textAlign: "center" }}>Loading backups…</p>
           : error ? <p style={{ padding: 32, color: "#f87171", textAlign: "center" }}>Backup data could not be loaded.</p>
-          : backups.length === 0 ? <p style={{ padding: 32, color: "#a1a1aa", textAlign: "center" }}>Supabase returned no backups for this project.</p>
+          : backups.length === 0 ? <p style={{ padding: 32, color: "#a1a1aa", textAlign: "center" }}>No backups are available for this project.</p>
           : backups.map((backup, index) => (
             <div key={backup.id || `${backup.created_at}-${index}`} style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", gap: 10, padding: "12px 0", borderBottom: "1px solid #26262a", fontSize: 13 }}>
               <time>{backup.created_at ? new Date(backup.created_at).toLocaleString() : "Unknown"}</time>
@@ -111,7 +111,7 @@ export default function BackupsClient() {
             </div>
           ))}
       </section>
-      <p style={{ marginTop: 12, color: "#71717a", fontSize: 12 }}>Backup scheduling and retention are controlled by Supabase. Storage objects are not included in database point-in-time recovery.</p>
+      <p style={{ marginTop: 12, color: "#71717a", fontSize: 12 }}>Backup scheduling and retention follow your plan. Stored files are not included in database point-in-time recovery.</p>
       {pitrEnabled && recoveryRange?.earliest_physical_backup_date_unix && recoveryRange.latest_physical_backup_date_unix && (
         <details style={{ ...panel, marginTop: 16 }}>
           <summary style={{ cursor: "pointer", fontSize: 14, color: "#f87171", fontWeight: 600 }}>Restore database to a point in time — destructive</summary>
@@ -139,10 +139,10 @@ export default function BackupsClient() {
         </details>
       )}
       {pitrEnabled && !recoveryRange?.earliest_physical_backup_date_unix && (
-        <p style={{ marginTop: 12, color: "#a1a1aa", fontSize: 13 }}>PITR is enabled, but Supabase did not report a usable recovery range.</p>
+        <p style={{ marginTop: 12, color: "#a1a1aa", fontSize: 13 }}>Point-in-time recovery is enabled, but no usable recovery range is available.</p>
       )}
       {!pitrEnabled && (
-        <p style={{ marginTop: 12, color: "#a1a1aa", fontSize: 13 }}>Point-in-time restore is unavailable because Supabase reports it is not enabled for this project.</p>
+        <p style={{ marginTop: 12, color: "#a1a1aa", fontSize: 13 }}>Point-in-time restore is not enabled for this project.</p>
       )}
     </main>
   );

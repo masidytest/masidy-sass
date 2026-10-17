@@ -12,6 +12,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ orgId: 
     const { orgId } = await params;
     const { user } = await requireRole(orgId, ["owner", "admin"]);
     const { plan } = body.parse(await req.json());
+    if (!process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY) {
+      return Response.json({ error: "Secure checkout is not configured yet." }, { status: 503 });
+    }
     const db = admin();
     const { data: org, error } = await db.from("orgs")
       .select("plan, stripe_subscription_id").eq("id", orgId).single();
@@ -37,11 +40,13 @@ export async function POST(req: Request, { params }: { params: Promise<{ orgId: 
       }],
       metadata: { type: "plan", orgId, plan },
       subscription_data: { metadata: { type: "plan", orgId, plan: plan as PaidPlan } },
-      success_url: checkoutUrl("/dashboard/plans?checkout=success"),
-      cancel_url: checkoutUrl("/dashboard/plans?checkout=cancelled"),
+      allowed_payment_method_types: ["card"],
+      ui_mode: "embedded_page",
+      redirect_on_completion: "if_required",
+      return_url: checkoutUrl("/dashboard/plans?checkout=complete&session_id={CHECKOUT_SESSION_ID}"),
     });
-    if (!session.url) throw new Error("Stripe did not return a checkout URL");
-    return Response.json({ url: session.url });
+    if (!session.client_secret) throw new Error("Could not start secure checkout");
+    return Response.json({ clientSecret: session.client_secret });
   } catch (e) {
     return fail(e);
   }

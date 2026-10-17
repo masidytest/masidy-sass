@@ -29,6 +29,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   try {
     const { project, user } = await requireProject((await params).id, ["owner", "admin"]);
     if (!project.supabase_ref) return Response.json({ error: "Project is still provisioning" }, { status: 409 });
+    if (!process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY) {
+      return Response.json({ error: "Secure checkout is not configured yet." }, { status: 503 });
+    }
     const input = body.parse(await req.json());
     const quote = await domainPrice(input.domain);
     if (!quote.available) return Response.json({ error: "That domain is not available" }, { status: 409 });
@@ -57,7 +60,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       const session = await stripeClient().checkout.sessions.create({
         mode: "payment",
         customer,
-        allowed_payment_method_types: ["card"],
         line_items: [{
           quantity: 1,
           price_data: {
@@ -71,10 +73,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         }],
         payment_intent_data: { setup_future_usage: "off_session" },
         metadata: { type: "domain_purchase", orderId: order.id, projectId: project.id },
-        success_url: checkoutUrl(`/dashboard/domains?checkout=success&domain=${encodeURIComponent(input.domain)}`),
-        cancel_url: checkoutUrl("/dashboard/domains?checkout=cancelled"),
+        allowed_payment_method_types: ["card"],
+        ui_mode: "embedded_page",
+        redirect_on_completion: "if_required",
+        return_url: checkoutUrl(`/dashboard/domains?checkout=complete&domain=${encodeURIComponent(input.domain)}&session_id={CHECKOUT_SESSION_ID}`),
       });
-      if (!session.url) throw new Error("Stripe did not return a checkout URL");
+      if (!session.client_secret) throw new Error("Could not start secure checkout");
       const { error: updateError } = await db.from("domain_orders")
         .update({ stripe_checkout_session_id: session.id }).eq("id", order.id);
       if (updateError) {
@@ -82,7 +86,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         throw new Error("Could not save the checkout session");
       }
       return Response.json({
-        url: session.url,
+        clientSecret: session.client_secret,
         purchaseAmountCents,
         renewalAmountCents,
         currency: "usd",

@@ -12,8 +12,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       domain: q,
       available: quote.available,
       currency: "usd",
-      purchaseAmountCents: retailDomainPriceCents(quote.purchasePrice),
-      renewalAmountCents: retailDomainPriceCents(quote.renewalPrice),
+      purchaseAmountCents: quote.available ? retailDomainPriceCents(quote.purchasePrice) : null,
+      renewalAmountCents: quote.available ? retailDomainPriceCents(quote.renewalPrice) : null,
       years: quote.years,
       markupPercent: 20,
     });

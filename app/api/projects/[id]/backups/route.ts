@@ -36,7 +36,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
     const data = await getProviderBackups(project.supabase_ref);
     const providerBackups = Array.isArray(data) ? data : data.backups;
     if (!Array.isArray(providerBackups)) {
-      return Response.json({ error: "Supabase returned an unexpected backups response" }, { status: 502 });
+      return Response.json({ error: "Backup data returned an unexpected response" }, { status: 502 });
     }
     const backups: BackupInfo[] = providerBackups.map(backup => ({
       id: backup.id == null ? "" : String(backup.id),

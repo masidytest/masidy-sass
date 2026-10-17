@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import type { AdvisorIssue } from "@/lib/types/overview";
 
 const WARN = "#f59e0b";
@@ -79,10 +80,10 @@ export function AdvisorWidget({ projectId }: Props) {
         );
       })}
       <div style={{ marginTop: 4 }}>
-        <a href="https://supabase.com/docs/guides/database/inspect" target="_blank" rel="noopener noreferrer"
+        <Link href="/dashboard/advisors"
           style={{ fontSize: 13, color: ACCENT, textDecoration: "none" }}>
-          Ask Assistant →
-        </a>
+          View advisor findings →
+        </Link>
       </div>
     </div>
   );

@@ -1,5 +1,6 @@
 import { HttpError, requireProject, fail } from "@/lib/auth";
 import { supabaseManagementRequest } from "@/lib/supabase-mgmt";
+import { env } from "@/lib/env";
 import { z } from "zod";
 
 type EdgeFunction = {
@@ -29,8 +30,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
     );
     return Response.json({
       functions,
-      baseUrl: `https://${project.supabase_ref}.supabase.co/functions/v1`,
-      projectRef: project.supabase_ref,
+      baseUrl: `https://${project.slug}.${env.GATEWAY_BASE_DOMAIN}/functions/v1`,
     });
   } catch (e) { return fail(e); }
 }

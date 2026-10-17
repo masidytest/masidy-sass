@@ -102,7 +102,7 @@ export default function SettingsPage() {
         <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 0", borderTop: "1px solid #26262a" }}>
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: 14, fontWeight: 600 }}>Delete project</div>
-            <div style={{ fontSize: 13, color: "#a1a1aa" }}>This permanently deletes the Supabase project and its data. Projects with registered domains or an email domain must be detached first.</div>
+            <div style={{ fontSize: 13, color: "#a1a1aa" }}>This permanently deletes the project and its data. Detach any connected domains or sending domain first.</div>
           </div>
           <button onClick={() => { setError(""); setConfirmDelete(c => !c); }}
             style={{ padding: "8px 14px", borderRadius: 8, border: "1px solid #7f1d1d", background: "transparent", color: ERR, fontSize: 14, cursor: "pointer", fontFamily: "inherit" }}>

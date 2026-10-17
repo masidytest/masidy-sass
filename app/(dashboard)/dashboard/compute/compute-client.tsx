@@ -29,7 +29,7 @@ export default function ComputeClient() {
       const data = await response.json();
       if (!response.ok) throw new Error(data.error ?? "Could not load compute options");
       if (!Array.isArray(data.available_addons) || !Array.isArray(data.selected_addons)) {
-        throw new Error("Supabase returned an unexpected compute options response");
+        throw new Error("Compute options returned an unexpected response");
       }
       setAddons(data);
       const computeAddon = data.available_addons.find((item: ComputeAddon) => item.type.toLowerCase().includes("compute"));
@@ -78,7 +78,7 @@ export default function ComputeClient() {
     const monthly = selectedOption.price?.amount == null
       ? "pricing is not reported"
       : `${new Intl.NumberFormat(undefined, { style: "currency", currency: "USD" }).format(selectedOption.price.amount / 100)} ${selectedOption.price.interval ?? "monthly"}`;
-    if (!window.confirm(`Change ${computeAddon.name} to ${selectedOption.name} (${monthly})? Supabase may bill this project for the selected compute option.`)) return;
+    if (!window.confirm(`Change ${computeAddon.name} to ${selectedOption.name} (${monthly})? This may add charges to your project.`)) return;
     setChangingCompute(true);
     setComputeMessage("");
     setAddonsError("");
@@ -90,7 +90,7 @@ export default function ComputeClient() {
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error ?? "Could not change compute size");
-      setComputeMessage("Compute change submitted to Supabase.");
+      setComputeMessage("Compute change submitted.");
       await loadAddons();
       await loadStats();
     } catch (e) {
@@ -105,7 +105,7 @@ export default function ComputeClient() {
       <div style={{ display: "flex", alignItems: "flex-end", gap: 16, marginBottom: 24, flexWrap: "wrap" }}>
         <div style={{ flex: 1 }}>
           <h1 style={{ margin: "0 0 6px", fontSize: 36, letterSpacing: "-.02em", fontFamily: "'Newsreader',Georgia,serif", fontWeight: 500 }}>Compute</h1>
-          <p style={{ margin: 0, color: "#a1a1aa", fontSize: 15 }}>Live utilization reported by Supabase for {project.name}.</p>
+          <p style={{ margin: 0, color: "#a1a1aa", fontSize: 15 }}>Live utilization for {project.name}.</p>
         </div>
         <button onClick={() => void loadStats()} disabled={loading} style={{ padding: "8px 14px", borderRadius: 8, border: "1px solid #33333a", background: "transparent", color: "#f4f4f5", fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
           {loading ? "Refreshing…" : "Refresh"}
@@ -126,7 +126,7 @@ export default function ComputeClient() {
         {computeMessage && <p role="status" style={{ color: "#75ea5e", fontSize: 14 }}>{computeMessage}</p>}
         {computeAddon ? <>
           <p style={{ margin: "0 0 12px", color: "#a1a1aa", fontSize: 13, lineHeight: 1.6 }}>
-            Current {computeAddon.name}: <strong style={{ color: "#f4f4f5" }}>{currentCompute?.variant.name ?? "Provider default"}</strong>. Supabase may bill this project for a compute change; the available price is shown below.
+            Current {computeAddon.name}: <strong style={{ color: "#f4f4f5" }}>{currentCompute?.variant.name ?? "Default"}</strong>. A compute change may add charges; the available price is shown below.
           </p>
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
             <select value={selectedVariant} onChange={event => setSelectedVariant(event.target.value)}
@@ -143,7 +143,7 @@ export default function ComputeClient() {
             </button>
           </div>
         </> : !addonsError ? <p style={{ margin: 0, color: "#a1a1aa", fontSize: 13 }}>
-          Supabase did not report a compute add-on for this project.
+          No compute options are available for this project.
         </p> : null}
         <Link href="/dashboard/plans" style={{ display: "inline-block", marginTop: 14, color: "#75ea5e", fontSize: 13 }}>View your Masidy plan</Link>
       </section>

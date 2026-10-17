@@ -14,7 +14,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
 
     if (!r.ok) {
       return Response.json(
-        { error: `Supabase branch listing failed (HTTP ${r.status})` },
+        { error: `Project branch listing failed (HTTP ${r.status})` },
         { status: 502 }
       );
     }

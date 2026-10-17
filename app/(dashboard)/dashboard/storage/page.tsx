@@ -139,13 +139,20 @@ export default function StoragePage() {
     if (!project || !selected) return;
     setError("");
     try {
-      const query = new URLSearchParams({ bucket: selected, path });
+      const query = new URLSearchParams({ bucket: selected, path, download: "true" });
       const response = await fetch(`/api/projects/${project.id}/storage/objects?${query}`);
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error ?? "Could not create download link");
-      window.open(data.url, "_blank", "noopener,noreferrer");
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error ?? "Could not download file");
+      }
+      const objectUrl = URL.createObjectURL(await response.blob());
+      const link = document.createElement("a");
+      link.href = objectUrl;
+      link.download = path.split("/").pop() || "download";
+      link.click();
+      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not create download link");
+      setError(e instanceof Error ? e.message : "Could not download file");
     }
   }
 
@@ -179,7 +186,7 @@ export default function StoragePage() {
       <div style={{ display: "flex", alignItems: "flex-end", gap: 16, flexWrap: "wrap", marginBottom: 24 }}>
         <div style={{ flex: 1 }}>
           <h1 style={{ margin: "0 0 6px", fontSize: 36, letterSpacing: "-.02em", fontFamily: "'Newsreader',Georgia,serif", fontWeight: 500 }}>Storage</h1>
-          <p style={{ margin: 0, color: "#a1a1aa", fontSize: 15 }}>Manage buckets and files in your Supabase project.</p>
+          <p style={{ margin: 0, color: "#a1a1aa", fontSize: 15 }}>Manage your project's buckets and files.</p>
         </div>
         <button onClick={() => setShowForm(value => !value)} style={{ ...button, background: "#f4f4f5", color: "#0b0b0c", fontWeight: 600 }}>
           New bucket

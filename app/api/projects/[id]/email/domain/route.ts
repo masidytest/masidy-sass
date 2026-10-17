@@ -16,7 +16,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
     if (!saved) return Response.json({ domain: null });
 
     const { data, error: resendError } = await resend.domains.get(saved.resend_domain_id);
-    if (resendError || !data) return Response.json({ error: "Could not load domain status from Resend" }, { status: 502 });
+    if (resendError || !data) return Response.json({ error: "Could not load sending domain status" }, { status: 502 });
     if (data.status !== "not_started") {
       await admin().from("email_domains").update({ status: data.status }).eq("project_id", project.id);
     }
@@ -35,7 +35,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     if (saved) {
       if (saved.domain !== domain) return Response.json({ error: "Remove the existing sending domain before adding another" }, { status: 409 });
       const { data, error } = await resend.domains.get(saved.resend_domain_id);
-      if (error || !data) return Response.json({ error: "Could not load domain status from Resend" }, { status: 502 });
+      if (error || !data) return Response.json({ error: "Could not load sending domain status" }, { status: 502 });
       return Response.json({ domain: data.name, status: data.status, records: data.records });
     }
 
@@ -44,7 +44,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const { error: saveError } = await db.from("email_domains").insert({
       project_id: project.id, domain, resend_domain_id: data.id, status: data.status,
     });
-    if (saveError) throw new Error("The sending domain was added to Resend but could not be saved");
+    if (saveError) throw new Error("The sending domain was added but could not be saved");
     return Response.json({ domain: data.name, records: data.records, status: data.status });
   } catch (e) { return fail(e); }
 }
@@ -59,7 +59,7 @@ export async function PATCH(_: Request, { params }: { params: Promise<{ id: stri
     if (!saved) return Response.json({ error: "Add a sending domain first" }, { status: 404 });
 
     const verified = await resend.domains.verify(saved.resend_domain_id);
-    if (verified.error) return Response.json({ error: "Resend could not verify the domain" }, { status: 502 });
+    if (verified.error) return Response.json({ error: "The sending domain could not be verified" }, { status: 502 });
     const { data, error: getError } = await resend.domains.get(saved.resend_domain_id);
     if (getError || !data) return Response.json({ error: "Could not load verification status" }, { status: 502 });
     const { error: updateError } = await db.from("email_domains")

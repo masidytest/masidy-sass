@@ -3,18 +3,15 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 
-type IntegrationKey = "supabase" | "vercel" | "stripe" | "resend" | "github" | "cloudflare" | "sentry";
-type Integration = { key: IntegrationKey; name: string; desc: string; category: string; href?: string };
+type IntegrationKey = "database" | "domains" | "billing" | "email";
+type Integration = { key: IntegrationKey; name: string; desc: string; category: string; href: string };
 type IntegrationStatus = "connected" | "not_configured" | "permission_error" | "unavailable";
 
 const integrations: Integration[] = [
-  { key: "supabase", name: "Supabase", desc: "Customer project provisioning, database, authentication and storage.", category: "Backend", href: "/dashboard/database" },
-  { key: "vercel", name: "Vercel", desc: "Domain registration and domain routing for customer projects.", category: "Domains", href: "/dashboard/domains" },
-  { key: "stripe", name: "Stripe", desc: "Masidy subscription checkout and billing portal.", category: "Payments", href: "/dashboard/plans" },
-  { key: "resend", name: "Resend", desc: "Sending-domain setup and DNS verification.", category: "Email", href: "/dashboard/email" },
-  { key: "github", name: "GitHub", desc: "Repository imports and branch-based deployments are not implemented.", category: "Source control" },
-  { key: "cloudflare", name: "Cloudflare", desc: "Cloudflare DNS and Workers are not configured for this product.", category: "Infrastructure" },
-  { key: "sentry", name: "Sentry", desc: "External error reporting is not configured.", category: "Observability" },
+  { key: "database", name: "Database, auth & storage", desc: "Create and manage your project's data, users, and files.", category: "Project services", href: "/dashboard/database" },
+  { key: "domains", name: "Domains", desc: "Search, register, and connect domains for your project.", category: "Project services", href: "/dashboard/domains" },
+  { key: "billing", name: "Plans & billing", desc: "Choose a Masidy plan and manage your subscription.", category: "Account", href: "/dashboard/plans" },
+  { key: "email", name: "Email delivery", desc: "Configure a sending domain and verify its DNS records.", category: "Project services", href: "/dashboard/email" },
 ];
 
 export default function IntegrationsPage() {
@@ -45,7 +42,7 @@ export default function IntegrationsPage() {
       <div style={{ display: "flex", alignItems: "flex-end", gap: 16, marginBottom: 12, flexWrap: "wrap" }}>
         <div style={{ flex: 1 }}>
           <h1 style={{ margin: "0 0 6px", fontSize: 36, letterSpacing: "-.02em", fontFamily: "'Newsreader',Georgia,serif", fontWeight: 500 }}>Integrations</h1>
-          <p style={{ margin: 0, color: "#a1a1aa", fontSize: 15 }}>Live read-only checks against configured provider APIs.</p>
+          <p style={{ margin: 0, color: "#a1a1aa", fontSize: 15 }}>Status of the services available to your projects.</p>
         </div>
         <button onClick={() => void loadStatus()} disabled={loading} style={{ padding: "8px 14px", borderRadius: 8, border: "1px solid #33333a", background: "transparent", color: "#f4f4f5", fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
           {loading ? "Checking…" : "Refresh"}
@@ -59,9 +56,9 @@ export default function IntegrationsPage() {
           const connected = state === "connected";
           const statusLabel = loading ? "CHECKING"
             : error || !state ? "UNKNOWN"
-              : state === "connected" ? "API ACCESS OK"
-                : state === "permission_error" ? "PERMISSION DENIED"
-                  : state === "unavailable" ? "API UNAVAILABLE" : "NOT CONFIGURED";
+              : state === "connected" ? "AVAILABLE"
+                : state === "permission_error" ? "NEEDS ATTENTION"
+                  : state === "unavailable" ? "TEMPORARILY UNAVAILABLE" : "SETUP REQUIRED";
           const statusColor = connected ? "#75ea5e" : state === "permission_error" || state === "unavailable" ? "#f87171" : "#a1a1aa";
           return (
             <div key={key} style={{ border: `1px solid ${connected ? "#75ea5e44" : "#26262a"}`, borderRadius: 12, background: "#151517", padding: 20, display: "flex", flexDirection: "column", gap: 12 }}>
@@ -75,13 +72,13 @@ export default function IntegrationsPage() {
                 </span>
               </div>
               <p style={{ margin: 0, fontSize: 13, color: "#a1a1aa", lineHeight: 1.5 }}>{desc}</p>
-              {connected && href && <Link href={href} style={{ alignSelf: "flex-start", padding: "7px 14px", borderRadius: 8, border: "1px solid #33333a", color: "#f4f4f5", fontSize: 13, textDecoration: "none" }}>Open feature</Link>}
+              <Link href={href} style={{ alignSelf: "flex-start", padding: "7px 14px", borderRadius: 8, border: "1px solid #33333a", color: "#f4f4f5", fontSize: 13, textDecoration: "none" }}>Open feature</Link>
             </div>
           );
         })}
       </div>
       <p style={{ marginTop: 16, color: "#71717a", fontSize: 12, lineHeight: 1.6 }}>
-        Checks make read-only provider API calls. “API access OK” confirms only the checked endpoint; deploys, billing, domain changes and other write actions still require their own provider permissions. GitHub, Cloudflare and Sentry currently have no product workflow beyond credential checks.
+        Status checks confirm service connectivity only. Each feature checks its required permissions when you use it.
       </p>
     </main>
   );

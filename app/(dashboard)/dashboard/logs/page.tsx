@@ -61,7 +61,7 @@ export default function LogsPage() {
       <div style={{ display: "flex", alignItems: "flex-end", gap: 16, flexWrap: "wrap", marginBottom: 24 }}>
         <div style={{ flex: 1 }}>
           <h1 style={{ margin: "0 0 6px", fontSize: 36, letterSpacing: "-.02em", fontFamily: "'Newsreader',Georgia,serif", fontWeight: 500 }}>Logs</h1>
-          <p style={{ margin: 0, color: "#a1a1aa", fontSize: 15 }}>Recent events from your Supabase project.</p>
+          <p style={{ margin: 0, color: "#a1a1aa", fontSize: 15 }}>Recent events from your project.</p>
         </div>
         <button onClick={() => void loadLogs()} disabled={loading} style={{ padding: "8px 14px", borderRadius: 8, border: "1px solid #33333a", background: "transparent", color: "#f4f4f5", fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
           {loading ? "Refreshing…" : "Refresh"}
@@ -107,7 +107,7 @@ export default function LogsPage() {
               </div>
             );
           })}
-        <p style={{ color: "#71717a", fontSize: 12, marginBottom: 0 }}>Showing up to 200 recent entries from Supabase logs.</p>
+        <p style={{ color: "#71717a", fontSize: 12, marginBottom: 0 }}>Showing up to 200 recent entries.</p>
       </section>
     </main>
   );

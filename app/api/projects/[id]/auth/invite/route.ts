@@ -20,8 +20,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       }
     );
     if (!r.ok) {
-      const err = await r.json().catch(() => ({}));
-      return Response.json({ error: (err as { message?: string }).message ?? "Failed to invite" }, { status: r.status });
+      return Response.json({ error: "Could not send the invitation. Check the email address and try again." }, { status: r.status });
     }
     return Response.json({ ok: true });
   } catch (e) { return fail(e); }

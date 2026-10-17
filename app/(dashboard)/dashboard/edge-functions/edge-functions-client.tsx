@@ -11,7 +11,6 @@ export default function EdgeFunctionsClient() {
   const { project, loading: projectLoading, error: projectError } = useProject();
   const [functions, setFunctions] = useState<EdgeFunction[]>([]);
   const [baseUrl, setBaseUrl] = useState("");
-  const [projectRef, setProjectRef] = useState("");
   const [loading, setLoading] = useState(true);
   const [deploying, setDeploying] = useState(false);
   const [slug, setSlug] = useState("");
@@ -32,7 +31,6 @@ export default function EdgeFunctionsClient() {
       if (!Array.isArray(data.functions)) throw new Error("Functions API returned an unexpected response");
       setFunctions(data.functions);
       setBaseUrl(data.baseUrl);
-      setProjectRef(data.projectRef);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not load Edge Functions");
     } finally {
@@ -90,16 +88,17 @@ export default function EdgeFunctionsClient() {
       {message && <p role="status" style={{ color: "#75ea5e", fontSize: 14 }}>{message}</p>}
 
       <section style={panel}>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr minmax(180px,2fr) 100px 100px", gap: 8, padding: "10px 0", borderBottom: "1px solid #26262a", fontFamily: "'Geist Mono',monospace", fontSize: 11, color: "#71717a" }}>
-          <span>NAME</span><span>URL</span><span>VERSION</span><span>STATUS</span>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr minmax(180px,2fr) 100px 100px 90px", gap: 8, padding: "10px 0", borderBottom: "1px solid #26262a", fontFamily: "'Geist Mono',monospace", fontSize: 11, color: "#71717a" }}>
+          <span>NAME</span><span>URL</span><span>VERSION</span><span>STATUS</span><span>ACTION</span>
         </div>
         {loading ? <p style={{ padding: 36, color: "#a1a1aa", textAlign: "center" }}>Loading functions…</p>
           : error ? <p style={{ padding: 36, color: "#f87171", textAlign: "center" }}>Function data could not be loaded.</p>
           : functions.length === 0 ? <div style={{ padding: "44px 20px", textAlign: "center", color: "#a1a1aa" }}>No Edge Functions are deployed in this project.</div>
           : functions.map(item => (
-            <div key={item.id} style={{ display: "grid", gridTemplateColumns: "1fr minmax(180px,2fr) 100px 100px", gap: 8, alignItems: "center", padding: "12px 0", borderBottom: "1px solid #26262a", fontSize: 13 }}>
+            <div key={item.id} style={{ display: "grid", gridTemplateColumns: "1fr minmax(180px,2fr) 100px 100px 90px", gap: 8, alignItems: "center", padding: "12px 0", borderBottom: "1px solid #26262a", fontSize: 13 }}>
               <span>{item.name || item.slug}</span>
-              <a href={`${baseUrl}/${encodeURIComponent(item.slug)}`} target="_blank" rel="noreferrer" style={{ color: "#75ea5e", overflowWrap: "anywhere" }}>{baseUrl}/{item.slug}</a>
+              <span style={{ color: "#a1a1aa", overflowWrap: "anywhere" }}>{baseUrl}/{item.slug}</span>
+              <button onClick={() => void copyText(`${baseUrl}/${encodeURIComponent(item.slug)}`)} style={button}>Copy URL</button>
               <span>{item.version}</span><span style={{ color: item.status === "ACTIVE" ? "#75ea5e" : "#a1a1aa" }}>{item.status}</span>
             </div>
           ))}
@@ -108,7 +107,7 @@ export default function EdgeFunctionsClient() {
       <section style={{ ...panel, marginTop: 20 }}>
         <h2 style={{ margin: "0 0 8px", fontSize: 16 }}>Deploy an Edge Function</h2>
         <p style={{ margin: "0 0 12px", color: "#a1a1aa", fontSize: 13, lineHeight: 1.6 }}>
-          Deploy a single-file TypeScript function directly through the Supabase Management API. Functions with local imports or bundled dependencies should still be deployed with the Supabase CLI.
+          Deploy a single-file TypeScript function from Masidy. Functions with local imports or bundled dependencies should be bundled before deployment.
         </p>
         <form onSubmit={deployFunction} style={{ display: "grid", gap: 12 }}>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: 12 }}>
@@ -128,7 +127,7 @@ export default function EdgeFunctionsClient() {
             spellCheck={false} rows={12} style={{ width: "100%", boxSizing: "border-box", padding: 12, border: "1px solid #33333a", borderRadius: 8, background: "#0e0e0f", color: "#f4f4f5", fontFamily: "'Geist Mono',monospace", fontSize: 12 }} />
           <label style={{ display: "flex", alignItems: "center", gap: 8, color: "#a1a1aa", fontSize: 13 }}>
             <input type="checkbox" checked={verifyJwt} onChange={event => setVerifyJwt(event.target.checked)} />
-            Require a valid Supabase JWT
+            Require a valid project access token
           </label>
           <div>
             <button type="submit" disabled={deploying || !source.trim()} style={button}>
@@ -136,12 +135,7 @@ export default function EdgeFunctionsClient() {
             </button>
           </div>
         </form>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", marginTop: 16 }}>
-          <code style={{ padding: "9px 12px", background: "#0e0e0f", border: "1px solid #26262a", borderRadius: 8, color: "#a1a1aa", fontSize: 12 }}>
-            supabase link --project-ref {projectRef}
-          </code>
-          <button onClick={() => void copyText(`supabase link --project-ref ${projectRef}`)} style={button}>Copy link command</button>
-        </div>
+        <p style={{ margin: "16px 0 0", color: "#71717a", fontSize: 12 }}>Function endpoints use your Masidy project domain. Copy an endpoint from the list to invoke it from your application.</p>
       </section>
     </main>
   );

@@ -11,7 +11,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
       `/projects/${encodeURIComponent(project.supabase_ref)}/auth/users?page=1&per_page=100`,
     );
     const users = Array.isArray(data) ? data : data.users;
-    if (!Array.isArray(users)) return Response.json({ error: "Supabase returned an unexpected users response" }, { status: 502 });
+    if (!Array.isArray(users)) return Response.json({ error: "User data returned an unexpected response" }, { status: 502 });
     return Response.json(users);
   } catch (e) { return fail(e); }
 }

@@ -27,9 +27,19 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       if (path.startsWith("/") || path.split("/").includes("..")) {
         return Response.json({ error: "Invalid storage path" }, { status: 400 });
       }
-      const { data, error } = await storage.from(bucket).createSignedUrl(path, 120);
-      if (error) return Response.json({ error: error.message }, { status: 502 });
-      return Response.json({ url: data.signedUrl });
+      if (url.searchParams.get("download") !== "true") {
+        return Response.json({ error: "A file download was expected" }, { status: 400 });
+      }
+      const { data, error } = await storage.from(bucket).download(path);
+      if (error) return Response.json({ error: "Could not download this file" }, { status: 502 });
+      const filename = path.split("/").pop() || "download";
+      return new Response(data, {
+        headers: {
+          "Content-Type": data.type || "application/octet-stream",
+          "Content-Disposition": `attachment; filename*=UTF-8''${encodeURIComponent(filename)}`,
+          "Cache-Control": "private, no-store",
+        },
+      });
     }
     const prefix = url.searchParams.get("prefix") ?? "";
     if (prefix.length > 1024 || prefix.startsWith("/") || prefix.split("/").includes("..")) {
@@ -42,7 +52,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     const { data, error } = await storage
       .from(bucket)
       .list(prefix, { limit: 100, offset, sortBy: { column: "name", order: "asc" } });
-    if (error) return Response.json({ error: error.message }, { status: 502 });
+    if (error) return Response.json({ error: "Could not load files for this bucket" }, { status: 502 });
     return Response.json({ objects: data, prefix, offset, hasMore: data.length === 100 });
   } catch (e) { return fail(e); }
 }
@@ -67,7 +77,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const { data, error } = await (await storageClient(project.supabase_ref))
       .from(input.bucket)
       .upload(input.path, file, { contentType: file.type || "application/octet-stream", upsert: false });
-    if (error) return Response.json({ error: error.message }, { status: 502 });
+    if (error) return Response.json({ error: "Could not upload this file" }, { status: 502 });
     return Response.json({ object: data }, { status: 201 });
   } catch (e) { return fail(e); }
 }
@@ -83,7 +93,7 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
     const { data, error } = await (await storageClient(project.supabase_ref))
       .from(input.bucket)
       .remove([input.path]);
-    if (error) return Response.json({ error: error.message }, { status: 502 });
+    if (error) return Response.json({ error: "Could not delete this file" }, { status: 502 });
     return Response.json({ removed: data });
   } catch (e) { return fail(e); }
 }

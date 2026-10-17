@@ -2,16 +2,18 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useProject } from "@/lib/hooks/use-project";
+import { EmbeddedCheckoutPanel } from "@/components/billing/EmbeddedCheckoutPanel";
 
 type Quote = {
   domain: string;
   available: boolean;
-  purchaseAmountCents: number;
-  renewalAmountCents: number;
+  purchaseAmountCents: number | null;
+  renewalAmountCents: number | null;
   currency: string;
   markupPercent: number;
 };
-type Domain = { id: string; domain: string; kind: string; status: string; created_at: string };
+type DnsRecord = { type: string; name: string; value: string };
+type Domain = { id: string; domain: string; kind: string; status: string; created_at: string; dnsConfigured?: boolean; dnsRecords?: DnsRecord[] };
 type Order = {
   id: string;
   domain: string;
@@ -36,6 +38,7 @@ export default function DomainsPage() {
   const [quote, setQuote] = useState<Quote | null>(null);
   const [searching, setSearching] = useState(false);
   const [purchasing, setPurchasing] = useState(false);
+  const [checkoutSecret, setCheckoutSecret] = useState<string | null>(null);
   const [connectDomain, setConnectDomain] = useState("");
   const [connecting, setConnecting] = useState(false);
   const [domains, setDomains] = useState<Domain[]>([]);
@@ -93,7 +96,7 @@ export default function DomainsPage() {
 
   async function purchase(e: React.FormEvent) {
     e.preventDefault();
-    if (!project || !quote?.available) return;
+    if (!project || !quote?.available || quote.purchaseAmountCents === null || quote.renewalAmountCents === null) return;
     setPurchasing(true);
     setMessage("");
     setMessageError(false);
@@ -105,8 +108,9 @@ export default function DomainsPage() {
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error ?? "Could not start checkout");
-      if (!data.url) throw new Error("Checkout URL was not returned");
-      window.location.assign(data.url);
+      if (typeof data.clientSecret !== "string" || !data.clientSecret) throw new Error("Secure checkout could not be started");
+      setCheckoutSecret(data.clientSecret);
+      setPurchasing(false);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Could not start checkout");
       setMessageError(true);
@@ -158,6 +162,17 @@ export default function DomainsPage() {
     }
   }
 
+  async function copyDnsValue(value: string) {
+    try {
+      await navigator.clipboard.writeText(value);
+      setMessage("DNS value copied.");
+      setMessageError(false);
+    } catch {
+      setMessage("Clipboard access was denied. Copy the DNS value manually.");
+      setMessageError(true);
+    }
+  }
+
   if (projectLoading) return <main style={{ padding: "32px 40px", color: "#a1a1aa" }}>Loading project…</main>;
   if (projectError || !project) return <main style={{ padding: "32px 40px", color: "#f87171" }}>{projectError ?? "No project available."}</main>;
 
@@ -165,7 +180,7 @@ export default function DomainsPage() {
     <main style={{ padding: "32px 40px" }}>
       <div style={{ marginBottom: 24 }}>
         <h1 style={{ margin: "0 0 6px", fontSize: 36, letterSpacing: "-.02em", fontFamily: "'Newsreader',Georgia,serif", fontWeight: 500 }}>Domains</h1>
-        <p style={{ margin: 0, color: "#a1a1aa", fontSize: 15 }}>Register through Vercel, with transparent Masidy pricing, or connect a domain you own.</p>
+        <p style={{ margin: 0, color: "#a1a1aa", fontSize: 15 }}>Register a new domain with transparent pricing, or connect a domain you own.</p>
       </div>
 
       <section style={{ ...panel, marginBottom: 20 }}>
@@ -177,14 +192,14 @@ export default function DomainsPage() {
         </form>
         {quote && (
           <div style={{ marginTop: 16, padding: 14, borderRadius: 8, background: "#0e0e0f", border: "1px solid #26262a" }}>
-            {quote.available ? (
+            {quote.available && quote.purchaseAmountCents !== null && quote.renewalAmountCents !== null ? (
               <>
                 <div style={{ fontWeight: 600, marginBottom: 6 }}>{quote.domain} is available</div>
                 <div style={{ color: "#a1a1aa", fontSize: 14 }}>
                   First year: <strong style={{ color: "#f4f4f5" }}>{money(quote.purchaseAmountCents)}</strong>
                   {" · "}annual renewal: <strong style={{ color: "#f4f4f5" }}>{money(quote.renewalAmountCents)}</strong>
                 </div>
-                <p style={{ margin: "8px 0 0", color: "#a1a1aa", fontSize: 12 }}>Includes a 20% Masidy markup. Annual renewal is charged through Stripe, then renewed through Vercel.</p>
+                <p style={{ margin: "8px 0 0", color: "#a1a1aa", fontSize: 12 }}>Includes a 20% Masidy service fee. Annual renewals are charged through your Masidy billing account.</p>
                 <form onSubmit={purchase} style={{ marginTop: 14 }}>
                   <h3 style={{ margin: "0 0 12px", fontSize: 15 }}>Registrant contact details</h3>
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 10 }}>
@@ -207,14 +222,33 @@ export default function DomainsPage() {
                     ))}
                   </div>
                   <button type="submit" disabled={purchasing} style={{ ...primaryButton, marginTop: 14 }}>
-                    {purchasing ? "Opening secure checkout…" : `Continue to checkout · ${money(quote.purchaseAmountCents)}`}
+                    {purchasing ? "Preparing secure checkout…" : `Continue to checkout · ${money(quote.purchaseAmountCents)}`}
                   </button>
                 </form>
               </>
+            ) : quote.available ? (
+              <span style={{ color: "#f87171" }}>Pricing is unavailable for this domain, so checkout cannot continue.</span>
             ) : <span style={{ color: "#f87171" }}>{quote.domain} is not available.</span>}
           </div>
         )}
       </section>
+
+      {checkoutSecret && (
+        <div style={{ marginBottom: 20 }}>
+          <EmbeddedCheckoutPanel
+            clientSecret={checkoutSecret}
+            title="Complete domain registration"
+            onClose={() => { setCheckoutSecret(null); setPurchasing(false); }}
+            onComplete={() => {
+              setCheckoutSecret(null);
+              setPurchasing(false);
+              setMessage("Payment complete. Domain registration is processing.");
+              setMessageError(false);
+              window.setTimeout(() => void loadDomains(), 2000);
+            }}
+          />
+        </div>
+      )}
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(320px,1fr))", gap: 20 }}>
         <section style={panel}>
@@ -229,8 +263,18 @@ export default function DomainsPage() {
             : domains.length === 0 ? <p style={{ color: "#a1a1aa", fontSize: 14 }}>No domains connected yet.</p>
               : domains.map(domain => (
                 <div key={domain.id} style={{ display: "flex", justifyContent: "space-between", gap: 12, padding: "12px 0", borderTop: "1px solid #26262a", fontSize: 14 }}>
-                  <span>{domain.domain}<small style={{ display: "block", marginTop: 4, color: "#71717a" }}>{domain.kind}</small></span>
-                  <span style={{ color: domain.status === "active" ? "#75ea5e" : "#a1a1aa" }}>{domain.status}</span>
+                  <span style={{ flex: 1 }}>{domain.domain}<small style={{ display: "block", marginTop: 4, color: "#71717a" }}>{domain.kind}</small>
+                    {domain.status !== "active" && domain.dnsRecords?.map((record, index) => (
+                      <div key={`${record.type}-${record.name}-${index}`} style={{ marginTop: 10, padding: 10, borderRadius: 8, background: "#0e0e0f", color: "#a1a1aa", fontSize: 12 }}>
+                        Add this DNS record at your domain provider:
+                        <div style={{ display: "grid", gridTemplateColumns: "55px 1fr auto", gap: 8, alignItems: "center", marginTop: 6 }}>
+                          <strong>{record.type}</strong><code style={{ overflowWrap: "anywhere" }}>{record.name} → {record.value}</code>
+                          <button type="button" onClick={() => void copyDnsValue(record.value)} style={{ ...primaryButton, padding: "5px 8px", fontSize: 11 }}>Copy value</button>
+                        </div>
+                      </div>
+                    ))}
+                  </span>
+                  <span style={{ color: domain.status === "active" ? "#75ea5e" : "#a1a1aa" }}>{domain.dnsConfigured ? "DNS detected" : domain.status}</span>
                 </div>
               ))}
         </section>
@@ -242,7 +286,7 @@ export default function DomainsPage() {
             <input id="connect-domain" required placeholder="yourapp.com" value={connectDomain} onChange={e => setConnectDomain(e.target.value)} style={{ ...input, marginBottom: 12 }} />
             <button type="submit" disabled={connecting || loadingDomains || Boolean(domainsError)} style={primaryButton}>{connecting ? "Connecting…" : "Connect domain"}</button>
           </form>
-          <p style={{ margin: "12px 0 0", color: "#a1a1aa", fontSize: 13, lineHeight: 1.6 }}>Masidy will add the domain to the gateway. You will need to point its DNS records to Vercel.</p>
+          <p style={{ margin: "12px 0 0", color: "#a1a1aa", fontSize: 13, lineHeight: 1.6 }}>Masidy will connect the domain and show the DNS record to apply. For domains managed elsewhere, you must add that record in your domain settings; Masidy cannot change those settings without access.</p>
         </section>
       </div>
 

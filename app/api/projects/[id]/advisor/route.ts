@@ -12,7 +12,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
     const r = await fetch(`${base}/projects/${project.supabase_ref}/advisors`, { headers: h });
     if (!r.ok) {
       return Response.json(
-        { error: `Supabase advisor scan failed (HTTP ${r.status})` },
+        { error: `Advisor scan failed (HTTP ${r.status})` },
         { status: 502 }
       );
     }

@@ -75,7 +75,7 @@ export default function AdvisorsPage() {
             </svg>
           </div>
           <div style={{ fontSize: 17, fontWeight: 600, marginBottom: 6 }}>No advisor findings</div>
-          <p style={{ margin: 0, color: "#a1a1aa", fontSize: 14 }}>Supabase returned no security or performance findings for this project.</p>
+          <p style={{ margin: 0, color: "#a1a1aa", fontSize: 14 }}>No security or performance findings were reported for this project.</p>
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>

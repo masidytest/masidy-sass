@@ -22,7 +22,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
 
     const end = new Date();
     const start = new Date(end.getTime() - minutes * 60_000);
-    const sql = `SELECT timestamp, source_name, event_message,
+    const sql = `SELECT timestamp, source AS source_name, event_message,
        log_attributes['request.method'] AS method,
        log_attributes['request.path'] AS path,
        log_attributes['response.status_code'] AS status_code
@@ -37,7 +37,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     );
     if (result.error) return Response.json({ error: result.error }, { status: 502 });
     if (!Array.isArray(result.result)) {
-      return Response.json({ error: "Supabase returned an unexpected logs response" }, { status: 502 });
+      return Response.json({ error: "Project logs returned an unexpected response" }, { status: 502 });
     }
     return Response.json({ logs: result.result, window: requestedWindow });
   } catch (e) { return fail(e); }

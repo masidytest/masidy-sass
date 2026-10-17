@@ -24,9 +24,11 @@ export async function requireProject(projectId: string, allowed: Role[]) {
 export const fail = (e: unknown) => {
   if (e instanceof HttpError) return Response.json({ error: e.message }, { status: e.status });
   if (e instanceof Error) {
-    return Response.json({ error: e.message, ...(e.name === "ZodError" ? {} : { retryable: true }) }, {
-      status: e.name === "ZodError" ? 400 : 502,
-    });
+    if (e.name === "ZodError") {
+      return Response.json({ error: "Invalid request. Check the entered details." }, { status: 400 });
+    }
+    console.error("Masidy API request failed", { name: e.name, message: e.message });
+    return Response.json({ error: "Masidy couldn't complete this request. Please try again.", retryable: true }, { status: 502 });
   }
   return Response.json({ error: "Unexpected server error" }, { status: 500 });
 };
