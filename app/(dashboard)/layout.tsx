@@ -1,10 +1,13 @@
 import { redirect } from "next/navigation";
-import { userClient } from "@/lib/supabase/server";
+import { userClient, admin } from "@/lib/supabase/server";
 import { Sidebar } from "@/components/sidebar";
+import { TopBar } from "@/components/topbar";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   let email = "";
-  let name = "You";
+  let name = "User";
+  let projectName = "My Project";
+  let plan = "FREE";
 
   try {
     const supabase = await userClient();
@@ -17,15 +20,32 @@ export default async function DashboardLayout({ children }: { children: React.Re
       (data.user.user_metadata?.name as string | undefined) ??
       (email ? email.split("@")[0] : "User") ??
       "User";
+
+    // Fetch first project name for top bar
+    try {
+      const db = admin();
+      const { data: member } = await db.from("org_members")
+        .select("org_id").eq("user_id", data.user.id).limit(1).single();
+      if (member) {
+        const { data: proj } = await db.from("projects")
+          .select("name, status").eq("org_id", member.org_id)
+          .order("created_at", { ascending: true }).limit(1).single();
+        if (proj) { projectName = proj.name; }
+        const { data: org } = await db.from("orgs")
+          .select("plan").eq("id", member.org_id).single();
+        if (org) plan = (org.plan as string).toUpperCase();
+      }
+    } catch { /* no project yet — fine */ }
+
   } catch {
-    // Placeholder credentials or network error — send to sign-in.
     redirect("/sign-in");
   }
 
   return (
     <div style={{ display: "flex", minHeight: "100vh", background: "#0e0e0f", color: "#f4f4f5" }}>
-      <Sidebar userName={name} userEmail={email} projectName="My Project" plan="FREE" />
+      <Sidebar userName={name} userEmail={email} projectName={projectName} plan={plan} />
       <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
+        <TopBar projectName={projectName} plan={plan} />
         {children}
       </div>
     </div>
