@@ -1,9 +1,6 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import {
-  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell,
-} from "recharts";
 import type { ServiceMetrics } from "@/lib/types/overview";
 
 const ACCENT = "#75ea5e";
@@ -32,8 +29,15 @@ function SkeletonCard() {
   );
 }
 
-// Individual service card
+// Individual service card with lazily loaded recharts
 function ServiceCard({ m }: { m: ServiceMetrics }) {
+  type RechartsType = typeof import("recharts");
+  const [RC, setRC] = useState<RechartsType | null>(null);
+
+  useEffect(() => {
+    import("recharts").then(mod => setRC(mod));
+  }, []);
+
   const chartData = m.buckets.map((b, i) => ({ i, ok: b.ok, warn: b.warn, error: b.error }));
 
   return (
@@ -48,20 +52,24 @@ function ServiceCard({ m }: { m: ServiceMetrics }) {
       <div style={{ fontSize: 26, fontWeight: 700, letterSpacing: "-.02em", color: "#f4f4f5", marginBottom: 4 }}>
         {m.total.toLocaleString()}
       </div>
-      <ResponsiveContainer width="100%" height={52}>
-        <BarChart data={chartData} barSize={4} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
-          <XAxis dataKey="i" hide />
-          <YAxis hide />
-          <Tooltip
-            contentStyle={{ background: "#151517", border: "1px solid #26262a", borderRadius: 8, fontSize: 12 }}
-            labelStyle={{ display: "none" }}
-            itemStyle={{ color: "#a1a1aa" }}
-          />
-          <Bar dataKey="ok" stackId="a" fill={ACCENT} radius={[0, 0, 0, 0]} />
-          <Bar dataKey="warn" stackId="a" fill={WARN} />
-          <Bar dataKey="error" stackId="a" fill={ERR} radius={[2, 2, 0, 0]} />
-        </BarChart>
-      </ResponsiveContainer>
+      {RC ? (
+        <RC.ResponsiveContainer width="100%" height={52}>
+          <RC.BarChart data={chartData} barSize={4} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
+            <RC.XAxis dataKey="i" hide />
+            <RC.YAxis hide />
+            <RC.Tooltip
+              contentStyle={{ background: "#151517", border: "1px solid #26262a", borderRadius: 8, fontSize: 12 }}
+              labelStyle={{ display: "none" }}
+              itemStyle={{ color: "#a1a1aa" }}
+            />
+            <RC.Bar dataKey="ok" stackId="a" fill={ACCENT} />
+            <RC.Bar dataKey="warn" stackId="a" fill={WARN} />
+            <RC.Bar dataKey="error" stackId="a" fill={ERR} radius={[2, 2, 0, 0]} />
+          </RC.BarChart>
+        </RC.ResponsiveContainer>
+      ) : (
+        <div style={{ height: 52, background: "#26262a", borderRadius: 4 }} />
+      )}
     </div>
   );
 }
